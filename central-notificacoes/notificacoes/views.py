@@ -1,6 +1,8 @@
-from django.urls import path
-from .views import show_notifications
+from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
 
-urlpatterns = [
-    path('notifications/', show_notifications, name='show_notifications'),
-]
+@login_required
+def notifications(request):
+    return render(request, 'notificacoes/notifications.html', {
+        'user_id': request.user.id
+    })
