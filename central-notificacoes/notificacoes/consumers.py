@@ -34,14 +34,7 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             await self.send(text_data=json.dumps({
                 'notifications': notifications
             }))
-
-    async def send_notification(self, event):
-        message = event['message']
-
-        await self.send(text_data=json.dumps({
-            'message': message
-        }))
-    
+            
     async def notify(self, event):
         # Este método será chamado quando uma mensagem do tipo 'notify' for recebida.
         message = event['message']
