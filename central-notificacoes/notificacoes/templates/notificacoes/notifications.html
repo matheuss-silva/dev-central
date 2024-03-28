@@ -1,30 +1,18 @@
-<!DOCTYPE html>
-<html lang="en">
+<html lang="pt">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Notificações</title>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    {% load static %}
+    <script src="{% static 'notificacoes/js/notifications.js' %}" defer></script>
 </head>
 <body>
     <h1>Central de Notificações</h1>
-    <div id="notifications"></div>
+    <div id="notification-area">
+        <!-- As notificações aparecerão aqui -->
+    </div>
+    <!-- O id do usuário para a conexão WebSocket -->
+    <script id="user-id" type="application/json">{{ user_id_json|safe }}</script>
 
-    <script>
-        const user_id = JSON.parse(document.getElementById('user_id').textContent);
-        const chatSocket = new WebSocket(
-            'ws://' + window.location.host + '/ws/notifications/' + user_id + '/'
-        );
 
-        chatSocket.onmessage = function(e) {
-            const data = JSON.parse(e.data);
-            document.querySelector('#notifications').append(data.message + '<br>');
-        };
-
-        chatSocket.onclose = function(e) {
-            console.error('Chat socket closed unexpectedly');
-        };
-    </script>
-    <script id="user_id" type="application/json">{{ user_id }}</script>
 </body>
 </html>

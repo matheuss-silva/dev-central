@@ -16,10 +16,13 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from notificacoes.views import auto_login
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('notificacoes/', include('notificacoes.urls')),
+    path('auto-login/', auto_login, name='auto_login'),
     
 ]
 

@@ -1,27 +1,33 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
-from django.contrib.auth import get_user_model
 from .models import Notification
+from django.contrib.auth.models import AnonymousUser
 
 class NotificationConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        if self.scope["user"].is_anonymous:
-            await self.close()
-        else:
-            self.user = self.scope["user"]
-            self.group_name = f'notifications_{self.user.id}'
+        # Verifique se o usuário está autenticado
+        if self.scope["user"].is_authenticated:
+            # Captura o user_id do usuário autenticado
+            self.user_id = str(self.scope["user"].id)
+            self.room_group_name = f'notifications_{self.user_id}'
 
+            # Inscreve no grupo
             await self.channel_layer.group_add(
-                self.group_name,
+                self.room_group_name,
                 self.channel_name
             )
 
+            # Aceita a conexão WebSocket
             await self.accept()
+        else:
+            # Se o usuário não está autenticado, rejeite a conexão
+            print("ERROOOOo")
+            await self.close()
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(
-            self.group_name,
+            self.room_group_name,
             self.channel_name
         )
 
@@ -36,8 +42,8 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             }))
             
     async def notify(self, event):
-        # Este método será chamado quando uma mensagem do tipo 'notify' for recebida.
         message = event['message']
+        # Envie a mensagem para o WebSocket
         await self.send(text_data=json.dumps({
             'message': message
         }))
