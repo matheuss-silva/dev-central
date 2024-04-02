@@ -1,0 +1,25 @@
+<!-- notifications_list.html -->
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Central de Notificações</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+</head>
+<body>
+    <h1>Notificações</h1>
+    <div id="notifications-list">
+        {% for notification in notifications %}
+            <div class="notification {{ 'unread' if not notification.read else 'read' }}">
+                <p class="title">{{ notification.title }}</p>
+                <p class="message">{{ notification.message }}</p>
+                <p class="timestamp">{{ notification.timestamp }}</p>
+                <a href="{% url 'mark_as_read' notification.id %}">Marcar como lida</a>
+            </div>
+        {% empty %}
+            <p>Não há novas notificações.</p>
+        {% endfor %}
+    </div>
+</body>
+</html>

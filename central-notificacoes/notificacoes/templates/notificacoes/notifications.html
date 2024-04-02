@@ -11,7 +11,11 @@
         <!-- As notificações aparecerão aqui -->
     </div>
     <!-- O id do usuário para a conexão WebSocket -->
-    <script id="user-id" type="application/json">{{ user_id_json|safe }}</script>
+    {% if user_id_json %}
+    <script id="user-id" type="application/json">{{ user_id_json }}</script>
+{% else %}
+    <script id="user-id" type="application/json">null</script>
+{% endif %}
 
 
 </body>

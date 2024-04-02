@@ -1,12 +1,12 @@
 import json
-from django.shortcuts import render
-from django.http import HttpResponse, JsonResponse
-from channels.layers import get_channel_layer
-from asgiref.sync import async_to_sync
-from django.views.decorators.csrf import csrf_exempt
-
 from django.contrib.auth import authenticate, login
-from django.http import HttpResponseRedirect
+from django.contrib.auth import get_user_model
+from django.http import JsonResponse, HttpResponse, HttpResponseRedirect
+from django.shortcuts import render
+from django.views.decorators.csrf import csrf_exempt
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+from .models import Notification
 
 def auto_login(request):
     user = authenticate(username='admin', password='12341234')
@@ -14,41 +14,63 @@ def auto_login(request):
         login(request, user)
         return HttpResponseRedirect('/notificacoes/')
     else:
-        return HttpResponse("Falha no login", status=401) 
-
+        return HttpResponse("Falha no login", status=401)
 
 def notifications(request):
-    # Verifique se o usuário está autenticado
     if request.user.is_authenticated:
-        # Passe o ID do usuário autenticado para o contexto
         return render(request, 'notificacoes/notifications.html', {'user_id_json': json.dumps(request.user.id)})
     else:
-        # Se o usuário não estiver autenticado, você pode decidir o que fazer
-        # Talvez redirecionar para a página de login ou passar 'null' como fallback
-        return render(request, 'notificacoes/notifications.html', {'user_id_json': 'null'})
-
+        return HttpResponseRedirect('/auto-login/')  # Redireciona para auto-login se não estiver autenticado
 
 @csrf_exempt
 def send_notification(request):
-    if request.method != "POST":
+    if request.method == "POST":
+        user_id = request.POST.get('user_id')
+        message = request.POST.get('message')
+        title = request.POST.get('title', 'No Title')
+
+        if not user_id or not message:
+            return JsonResponse({'error': 'Dados inválidos'}, status=400)
+
+        try:
+            user = get_user_model().objects.get(id=user_id)
+            notification = Notification.objects.create(recipient=user, title=title, message=message, read=False)
+
+            channel_layer = get_channel_layer()
+            group_name = f'notifications_{user_id}'
+            async_to_sync(channel_layer.group_send)(
+                group_name,
+                {
+                    'type': 'notify',
+                    'message': message,
+                    'title': title,
+                }
+            )
+            
+            return JsonResponse({'success': 'Notificação enviada e armazenada'}, status=200)
+        
+        except get_user_model().DoesNotExist:
+            return JsonResponse({'error': 'Usuário não encontrado'}, status=404)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+    else:
         return JsonResponse({'error': 'Método inválido'}, status=405)
 
-    user_id = request.POST.get('user_id')
-    message = request.POST.get('message')
-    if not user_id or not message:
-        return JsonResponse({'error': 'Dados inválidos'}, status=400)
-    
-    try:
-        channel_layer = get_channel_layer()
-        group_name = f'notifications_{user_id}'
+def list_notifications(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Usuário não autenticado'}, status=401)
 
-        async_to_sync(channel_layer.group_send)(
-            group_name,
-            {
-                'type': 'notify',
-                'message': message,
-            }
-        )
-        return JsonResponse({'success': 'Notificacao enviada'}, status=200)
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+    notifications = Notification.objects.filter(recipient=request.user, read=False)
+    return render(request, 'notificacoes/list_notifications.html', {'notifications': notifications})
+
+@csrf_exempt
+def mark_notification_as_read(request):
+    if request.method == 'POST':
+        notification_id = request.POST.get('notification_id')
+        try:
+            notification = Notification.objects.get(id=notification_id, recipient=request.user)
+            notification.read = True
+            notification.save()
+            return JsonResponse({'success': 'Notificação marcada como lida'})
+        except Notification.DoesNotExist:
+            return JsonResponse({'error': 'Notificação não encontrada'}, status=404)

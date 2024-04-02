@@ -6,22 +6,17 @@ from django.contrib.auth.models import AnonymousUser
 
 class NotificationConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        # Verifique se o usuário está autenticado
         if self.scope["user"].is_authenticated:
-            # Captura o user_id do usuário autenticado
             self.user_id = str(self.scope["user"].id)
             self.room_group_name = f'notifications_{self.user_id}'
 
-            # Inscreve no grupo
             await self.channel_layer.group_add(
                 self.room_group_name,
                 self.channel_name
             )
 
-            # Aceita a conexão WebSocket
             await self.accept()
         else:
-            # Se o usuário não está autenticado, rejeite a conexão
             print("ERROOOOo")
             await self.close()
 

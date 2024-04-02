@@ -32,6 +32,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    "daphne",
     "channels",
     'notificacoes',
     "django.contrib.sites",
@@ -124,7 +125,7 @@ USE_I18N = True
 
 USE_TZ = True
 
-ASGI_APPLICATION = 'central_notificacoes.routing.application'
+ASGI_APPLICATION = 'central_notificacoes.asgi.application'
 
 
 
