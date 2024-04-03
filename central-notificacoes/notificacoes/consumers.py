@@ -1,8 +1,11 @@
 import json
+import logging
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from .models import Notification
 from django.contrib.auth.models import AnonymousUser
+
+logger = logging.getLogger(__name__)
 
 class NotificationConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -45,5 +48,6 @@ class NotificationConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def fetch_notifications(self):
+        logger.debug(f"Querying unread notifications for user {self.user_id}")
         notifications = Notification.objects.filter(recipient=self.user, read=False)
         return list(notifications.values())
