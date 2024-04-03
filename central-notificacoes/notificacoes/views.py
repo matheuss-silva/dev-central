@@ -1,6 +1,5 @@
 import json
-from django.contrib.auth import authenticate, login
-from django.contrib.auth import get_user_model
+from django.contrib.auth import authenticate, login, get_user_model
 from django.http import JsonResponse, HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
@@ -18,9 +17,15 @@ def auto_login(request):
 
 def notifications(request):
     if request.user.is_authenticated:
-        return render(request, 'notificacoes/notifications.html', {'user_id_json': json.dumps(request.user.id)})
+        user_notifications = Notification.objects.filter(recipient=request.user, read=False)
+        notifications_json = json.dumps([notification.to_dict() for notification in user_notifications])
+        return render(request, 'notificacoes/notifications.html', {
+            'user_id_json': json.dumps(request.user.id),
+            'notifications_json': notifications_json,
+        })
     else:
-        return HttpResponseRedirect('/auto-login/')  # Redireciona para auto-login se não estiver autenticado
+        return HttpResponseRedirect('/auto-login/')
+    
 
 @csrf_exempt
 def send_notification(request):

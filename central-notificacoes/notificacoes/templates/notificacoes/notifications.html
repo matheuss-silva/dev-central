@@ -7,16 +7,21 @@
 </head>
 <body>
     <h1>Central de Notificações</h1>
-    <div id="notification-area">
-        <!-- As notificações aparecerão aqui -->
-    </div>
-    <!-- O id do usuário para a conexão WebSocket -->
-    {% if user_id_json %}
-    <script id="user-id" type="application/json">{{ user_id_json }}</script>
-{% else %}
-    <script id="user-id" type="application/json">null</script>
-{% endif %}
-
-
+    <body>
+        <div id="notifications"></div>
+    
+        <script id="user-notifications" type="application/json">{{ notifications_json|safe }}</script>
+        <script id="user-id" type="application/json">{{ user_id_json|safe }}</script>
+        <script>
+            const notificationsElement = document.getElementById('notifications');
+            const notificationsData = JSON.parse(document.getElementById('user-notifications').textContent);
+    
+            notificationsData.forEach(notification => {
+                const notificationElement = document.createElement('div');
+                notificationElement.textContent = `${notification.title}: ${notification.message}`;
+                notificationsElement.appendChild(notificationElement);
+            });
+        </script>
+    </body>
 </body>
 </html>
