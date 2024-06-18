@@ -41,10 +41,10 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             
     async def notify(self, event):
         message = event['message']
-        # Envie a mensagem para o WebSocket
         await self.send(text_data=json.dumps({
             'message': message
         }))
+
 
     @database_sync_to_async
     def fetch_notifications(self):

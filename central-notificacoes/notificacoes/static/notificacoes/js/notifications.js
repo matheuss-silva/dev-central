@@ -22,4 +22,13 @@ document.addEventListener('DOMContentLoaded', function() {
     websocket.onclose = function(e) {
         console.error('WebSocket closed unexpectedly');
     };
+
+    websocket.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        const notificationArea = document.getElementById('notification-area');
+        const messageDiv = document.createElement('div');
+        messageDiv.textContent = data.message;
+        notificationArea.appendChild(messageDiv);
+    };
+      
 });
