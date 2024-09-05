@@ -3,7 +3,6 @@ import logging
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from .models import Notification
-from django.contrib.auth.models import AnonymousUser
 
 logger = logging.getLogger(__name__)
 
@@ -19,35 +18,27 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             )
 
             await self.accept()
+            logger.info(f'User {self.user_id} connected to group {self.room_group_name}')
         else:
-            print("ERROOOOo")
             await self.close()
+            logger.warning('Anonymous user attempted to connect to WebSocket.')
 
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(
-            self.room_group_name,
-            self.channel_name
-        )
+        if hasattr(self, 'room_group_name'):
+            await self.channel_layer.group_discard(
+                self.room_group_name,
+                self.channel_name
+            )
+            logger.info(f'User {self.user_id} disconnected from group {self.room_group_name}')
 
-    async def receive(self, text_data):
-        text_data_json = json.loads(text_data)
-        action = text_data_json.get('action')
-
-        if action == 'fetch_notifications':
-            notifications = await self.fetch_notifications()
-            await self.send(text_data=json.dumps({
-                'notifications': notifications
-            }))
-            
     async def notify(self, event):
         message = event['message']
+        logger.info(f'Notification sent to user {self.user_id}: {message}')
         await self.send(text_data=json.dumps({
             'message': message
         }))
 
-
     @database_sync_to_async
     def fetch_notifications(self):
-        logger.debug(f"Querying unread notifications for user {self.user_id}")
-        notifications = Notification.objects.filter(recipient=self.user, read=False)
+        notifications = Notification.objects.filter(recipient=self.scope["user"], read=False)
         return list(notifications.values())

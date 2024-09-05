@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model  # Adicione esta linha
 
 class Notification(models.Model):
     recipient = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)

@@ -1,27 +1,14 @@
-<html lang="pt">
+<!DOCTYPE html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Notificações</title>
     {% load static %}
-    <script src="{% static 'notificacoes/js/notifications.js' %}" defer></script>
+    <script src="{% static 'notificacoes/js/push_notifications.js' %}"></script>
 </head>
 <body>
-    <h1>Central de Notificações</h1>
-    <body>
-        <div id="notifications"></div>
-    
-        <script id="user-notifications" type="application/json">{{ notifications_json|safe }}</script>
-        <script id="user-id" type="application/json">{{ user_id_json|safe }}</script>
-        <script>
-            const notificationsElement = document.getElementById('notifications');
-            const notificationsData = JSON.parse(document.getElementById('user-notifications').textContent);
-    
-            notificationsData.forEach(notification => {
-                const notificationElement = document.createElement('div');
-                notificationElement.textContent = `${notification.title}: ${notification.message}`;
-                notificationsElement.appendChild(notificationElement);
-            });
-        </script>
-    </body>
+    <h1>Notificações</h1>
+    <div id="notification-area"></div>
 </body>
 </html>

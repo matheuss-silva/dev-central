@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home - Notificação Push</title>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const userId = "{{ user_id_json|escapejs }}";  // Valor envolto por aspas
+            const notificationsContainer = document.getElementById('push-notification-area');  // Certifique-se de que existe esse ID
+
+            console.log('User ID: ', userId);
+
+            // Conectar ao WebSocket
+            const ws_scheme = window.location.protocol === "https:" ? "wss" : "ws";
+            const socket = new WebSocket(ws_scheme + '://' + window.location.host + '/ws/notifications/' + userId + '/');
+
+            socket.onopen = function () {
+                console.log('WebSocket conectado.');
+            };
+
+            socket.onmessage = function (e) {
+                const data = JSON.parse(e.data);
+                const message = data['message'];
+                console.log('Mensagem recebida via WebSocket:', message);
+                addNotification(message);
+            };
+
+            socket.onclose = function () {
+                console.log('WebSocket desconectado.');
+            };
+
+            socket.onerror = function (e) {
+                console.error('WebSocket erro:', e);
+            };
+
+            // Função para adicionar a notificação e removê-la após 5 segundos
+            function addNotification(message) {
+                const notificationElement = document.createElement('div');
+                notificationElement.className = 'notification';
+                notificationElement.textContent = message;
+                notificationsContainer.prepend(notificationElement);
+
+                // Remover a notificação após 5 segundos
+                setTimeout(() => {
+                    console.log("Removendo notificação:", notificationElement.textContent);
+                    notificationElement.remove();
+                }, 5000);  // 5 segundos para remover a notificação
+            }
+        });
+    </script>
+    
+    <style>
+        .notification {
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <h1>Bem-vindo(a) à Home</h1>
+
+    <div id="push-notification-area">
+        <p>Sem notificações.</p>
+    </div>
+</body>
+</html>
