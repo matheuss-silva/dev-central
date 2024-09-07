@@ -1,10 +1,14 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const userId = "{{ user_id_json|escapejs }}";  // Certifique-se de que o user_id está correto
-    const notificationsContainer = document.getElementById('push-notification-area');  // Certifique-se de que existe essa área
+    const notificationsContainer = document.getElementById('push-notification-area');
+    const userId = notificationsContainer.dataset.userId;  // Pega o valor de user_id_json do data-attribute
+
+    if (!userId) {
+        console.error("User ID não encontrado.");
+        return;
+    }
 
     console.log('User ID: ', userId);
 
-    // Conectar ao WebSocket
     const ws_scheme = window.location.protocol === "https:" ? "wss" : "ws";
     const socket = new WebSocket(ws_scheme + '://' + window.location.host + '/ws/notifications/' + userId + '/');
 
@@ -26,7 +30,7 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     socket.onerror = function(e) {
-        console.error('WebSocket erro:', e);
+        console.error('Erro no WebSocket:', e);
     };
 
     function addNotification(message) {
@@ -37,8 +41,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Remover notificação após 5 segundos
         setTimeout(() => {
-            console.log("Removendo notificação:", notificationElement.textContent);
             notificationElement.remove();
-        }, 5000);  // 5 segundos para remover a notificação
+        }, 5000);
     }
 });

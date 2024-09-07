@@ -8,6 +8,8 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.contrib.auth.decorators import login_required
 from .models import Notification
+from .models import Post
+
 
 logger = logging.getLogger(__name__)
 
@@ -39,11 +41,16 @@ def notifications(request):
 @login_required
 def home(request):
     """
-    View para a tela home que passa o user_id para o template
+    View para a tela home que passa o user_id e os posts para o template.
     """
     user_id_json = json.dumps(request.user.id)
+    
+    # Buscar todas as postagens
+    posts = Post.objects.all().order_by('-created_at')  # Ordenar da mais recente para a mais antiga
+    
     return render(request, 'notificacoes/home.html', {
-        'user_id_json': user_id_json
+        'user_id_json': user_id_json,
+        'posts': posts  # Enviar as postagens para o template
     })
 
 @csrf_exempt
@@ -118,3 +125,21 @@ def send_notification_to_user(user_id, message):
         logger.info(f'Notificação enviada para user_id {user_id} via WebSocket.')
     except Exception as e:
         logger.error(f'Erro ao enviar notificação via WebSocket para user_id {user_id}: {str(e)}')
+
+def send_post_to_users(post):
+    """
+    Envia uma nova postagem para todos os usuários conectados ao WebSocket.
+    """
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        'posts_group',  # Nome do grupo do WebSocket
+        {
+            'type': 'post_message',  # Tipo de evento que será capturado pelo WebSocket
+            'post': {
+                'title': post.title,
+                'subtitle': post.subtitle,
+                'image_url': post.image.url if post.image else '',
+                'author': post.author.username,
+            }
+        }
+    )

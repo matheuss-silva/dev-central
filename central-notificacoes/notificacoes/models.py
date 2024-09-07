@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.auth import get_user_model  # Adicione esta linha
+from django.contrib.auth import get_user_model 
 
 class Notification(models.Model):
     recipient = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
@@ -18,3 +18,15 @@ class Notification(models.Model):
             'message': self.message,
             'read': self.read,
         }
+    
+User = get_user_model()
+
+class Post(models.Model):
+    title = models.CharField(max_length=255)
+    subtitle = models.CharField(max_length=255)
+    image = models.ImageField(upload_to='posts/')
+    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.title

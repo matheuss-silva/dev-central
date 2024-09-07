@@ -6,10 +6,10 @@ from django.core.asgi import get_asgi_application
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'central_notificacoes.settings')
 
-# Inicialize o Django
+# Inicialize o Django antes de qualquer outra coisa
 django.setup()
 
-# Importar o roteamento do WebSocket
+# Agora você pode importar o roteamento sem problemas
 import notificacoes.routing
 
 application = ProtocolTypeRouter({
