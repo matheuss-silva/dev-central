@@ -16,19 +16,10 @@
 
     <!-- Container para posts -->
     <div id="post-container" data-user-id="{{ user_id_json }}">
-        {% if posts %}
-            {% for post in posts %}
-                <div class="post">
-                    <h2>{{ post.title }}</h2>
-                    <h4>{{ post.subtitle }}</h4>
-                    <img src="{{ post.image.url }}" alt="Imagem do post" class="post-image" style="width: 100px;">
-                </div>
-            {% endfor %}
-        {% else %}
-            <p>Sem postagens no momento.</p>
-        {% endif %}
+        <p>Sem postagens no momento.</p>
     </div>
 
+    <!-- Aqui serão carregados os scripts do React -->
     <script src="{% static 'notificacoes/js/push_notifications.js' %}"></script>
     <script src="{% static 'notificacoes/js/posts.js' %}"></script>
 </body>

@@ -47,6 +47,7 @@ LOGGING = {
 # Application definition
 
 INSTALLED_APPS = [
+    'corsheaders',
     "channels",
     'notificacoes',
     "django.contrib.sites",
@@ -55,10 +56,21 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'rest_framework',
+    'webpack_loader',
     'django.contrib.staticfiles',
 ]
 
+WEBPACK_LOADER = {
+    'DEFAULT': {
+        'BUNDLE_DIR_NAME': 'static/', 
+        'STATS_FILE': os.path.join(BASE_DIR, 'frontend', 'webpack-stats.json'),
+    }
+}
+
+
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -140,6 +152,8 @@ USE_TZ = True
 
 SITE_ID = 1
 
+CORS_ALLOW_ALL_ORIGINS = True  
+
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
@@ -147,7 +161,12 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
 STATIC_URL = '/static/'
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'notificacoes/static'),  
+    os.path.join(BASE_DIR, 'frontend/build/static'), 
+]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
 
 # WhiteNoise configuration for serving static files
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'

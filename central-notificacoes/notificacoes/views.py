@@ -7,6 +7,8 @@ from django.views.decorators.csrf import csrf_exempt
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.contrib.auth.decorators import login_required
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
 from .models import Notification
 from .models import Post
 
@@ -24,6 +26,22 @@ def auto_login(request):
     else:
         logger.error('Failed login attempt for user admin.')
         return HttpResponse("Falha no login", status=401)
+    
+@api_view(['GET'])
+def get_posts(request):
+    # Pegando todos os posts ordenados do mais recente para o mais antigo
+    posts = Post.objects.all().order_by('-created_at')
+
+    # Formatando os dados como uma lista de dicionários
+    posts_list = [
+        {
+            'title': post.title,
+            'subtitle': post.subtitle,
+            'image_url': post.image.url if post.image else '',
+            'author': post.author.username,
+        } for post in posts
+    ]
+    return Response(posts_list)
 
 def notifications(request):
     if request.user.is_authenticated:
