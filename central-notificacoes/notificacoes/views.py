@@ -20,7 +20,7 @@ def auto_login(request):
     if user is not None:
         login(request, user)
         logger.info(f'User {user.username} logged in successfully.')
-        return HttpResponseRedirect('/notificacoes/')
+        return HttpResponseRedirect('/home/')
     else:
         logger.error('Failed login attempt for user admin.')
         return HttpResponse("Falha no login", status=401)
@@ -56,24 +56,26 @@ def home(request):
 @csrf_exempt
 def send_notification(request):
     if request.method == "POST":
-        user_id = request.POST.get('user_id')
         message = request.POST.get('message')
         title = request.POST.get('title', 'No Title')
 
-        if not user_id or not message:
+        if not message:
             return JsonResponse({'error': 'Dados inválidos'}, status=400)
 
         try:
-            user = User.objects.get(id=user_id)
-            notification = Notification.objects.create(recipient=user, title=title, message=message, read=False)
+            # Cria a notificação (opcional para salvar no banco)
+            notification = Notification.objects.create(
+                recipient=None,  # Nenhum destinatário específico
+                title=title,
+                message=message,
+                read=False
+            )
 
-            # Enviar notificação via WebSocket
-            send_notification_to_user(user_id, notification.message)
+            # Envia a notificação para todos os usuários conectados
+            send_notification_to_group(notification.message)
             
-            return JsonResponse({'success': 'Notificação enviada e armazenada'}, status=200)
+            return JsonResponse({'success': 'Notificação enviada para todos os usuários conectados'}, status=200)
         
-        except User.DoesNotExist:
-            return JsonResponse({'error': 'Usuário não encontrado'}, status=404)
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
     else:
@@ -108,23 +110,22 @@ def list_notifications(request):
     return render(request, 'notificacoes/list_notifications.html', {'notifications': notifications})
 
 
-def send_notification_to_user(user_id, message):
+def send_notification_to_group(message):
     """
-    Método para enviar notificação para um usuário específico via WebSocket
+    Envia uma notificação para todos os usuários conectados ao grupo global de notificações.
     """
     try:
         channel_layer = get_channel_layer()
-        group_name = f'notifications_{user_id}'
         async_to_sync(channel_layer.group_send)(
-            group_name,
+            'notifications_group',  # Nome do grupo global
             {
-                'type': 'notify',
-                'message': message,
+                'type': 'notify',  # Tipo de mensagem
+                'message': message,  # Conteúdo da mensagem
             }
         )
-        logger.info(f'Notificação enviada para user_id {user_id} via WebSocket.')
+        logger.info(f'Notificação enviada para o grupo global de notificações.')
     except Exception as e:
-        logger.error(f'Erro ao enviar notificação via WebSocket para user_id {user_id}: {str(e)}')
+        logger.error(f'Erro ao enviar notificação para o grupo global: {str(e)}')
 
 def send_post_to_users(post):
     """

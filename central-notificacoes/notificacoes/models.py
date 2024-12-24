@@ -2,14 +2,21 @@ from django.db import models
 from django.contrib.auth import get_user_model 
 
 class Notification(models.Model):
-    recipient = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
+    recipient = models.ForeignKey(
+        get_user_model(),
+        on_delete=models.CASCADE,
+        null=True,  # Permite valores nulos no banco de dados
+        blank=True  # Permite deixar o campo em branco no Django Admin
+    )
     title = models.CharField(max_length=255)
     message = models.TextField()
     read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f'Notification for {self.recipient.username}: {self.title}'
+        if self.recipient:
+            return f'Notification for {self.recipient.username}: {self.title}'
+        return f'Notification (Global): {self.title}'
     
     def to_dict(self):
         return {
@@ -18,7 +25,7 @@ class Notification(models.Model):
             'message': self.message,
             'read': self.read,
         }
-    
+
 User = get_user_model()
 
 class Post(models.Model):

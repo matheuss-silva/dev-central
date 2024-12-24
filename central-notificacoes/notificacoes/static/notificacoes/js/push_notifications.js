@@ -1,19 +1,11 @@
 document.addEventListener('DOMContentLoaded', function() {
     const notificationsContainer = document.getElementById('push-notification-area');
-    const userId = notificationsContainer.dataset.userId;  // Pega o valor de user_id_json do data-attribute
-
-    if (!userId) {
-        console.error("User ID não encontrado.");
-        return;
-    }
-
-    console.log('User ID: ', userId);
 
     const ws_scheme = window.location.protocol === "https:" ? "wss" : "ws";
-    const socket = new WebSocket(ws_scheme + '://' + window.location.host + '/ws/notifications/' + userId + '/');
+    const socket = new WebSocket(ws_scheme + '://' + window.location.host + '/ws/notifications/');
 
     socket.onopen = function() {
-        console.log('WebSocket conectado.');
+        console.log('WebSocket conectado para notificações.');
     };
 
     socket.onmessage = function(event) {

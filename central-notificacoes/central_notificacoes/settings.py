@@ -91,10 +91,11 @@ CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            "hosts": [('127.0.0.1', 6379)],
+            "hosts": [('172.28.39.80', 6379)],  # Use o IP do WSL
         },
     },
 }
+
 
 WSGI_APPLICATION = 'central_notificacoes.wsgi.application'
 ASGI_APPLICATION = 'central_notificacoes.asgi.application'

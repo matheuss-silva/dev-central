@@ -1,0 +1,25 @@
+version: "3.9"
+services:
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    restart: always
+
+  django:
+    build:
+      context: .
+    container_name: django_app
+    command: daphne -b 0.0.0.0 -p 8000 central_notificacoes.asgi:application
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+    environment:
+      - DJANGO_SETTINGS_MODULE=central_notificacoes.settings
+
+volumes:
+  redis_data:
