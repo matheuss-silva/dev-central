@@ -1,46 +1,28 @@
-import React, { useEffect, useState } from 'react';
-import './App.css';
+import React, { useState, useEffect } from 'react';
+import Notifications from './Notifications';
+import Posts from './Posts';
 
 function App() {
-  // Definir um estado para armazenar os posts
-  const [posts, setPosts] = useState([]);
+  const [userId] = useState(null);  // Inicialmente nulo
+  const [posts, setPosts] = useState([]);      // Estado para as postagens
+  const [notifications, setNotifications] = useState([]);  // Estado para as notificações
 
-  // Função para buscar os posts da API
   useEffect(() => {
-    fetch('/api/posts/')
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error('Erro ao buscar postagens');
-        }
-        return response.json();
-      })
-      .then((data) => {
-        setPosts(data); // Armazenar os posts no estado
-      })
-      .catch((error) => {
-        console.error('Erro ao buscar postagens:', error);
-      });
+    fetch('http://127.0.0.1:8000/api/posts/')
+      .then(response => response.json())
+      .then(data => setPosts(data))
+      .catch(error => console.error("Erro ao buscar postagens:", error));
+    
+    fetch('http://127.0.0.1:8000/api/notifications/')
+      .then(response => response.json())
+      .then(data => setNotifications(data))
+      .catch(error => console.error("Erro ao buscar notificações:", error));
   }, []);
 
   return (
     <div className="App">
-      <h1>Postagens em Tempo Reaaal</h1>
-      <div id="post-container">
-        {posts.length > 0 ? (
-          posts.map((post, index) => (
-            <div key={index} className="post">
-              <h2>{post.title}</h2>
-              <h4>{post.subtitle}</h4>
-              {post.image_url && (
-                <img src={post.image_url} alt="Imagem do Post" className="post-image" style={{ width: '100px' }} />
-              )}
-              <p>Autor: {post.author}</p>
-            </div>
-          ))
-        ) : (
-          <p>Sem postagens no momento.</p>
-        )}
-      </div>
+      <Notifications userId={userId} notifications={notifications} />  {/* Passa as notificações */}
+      <Posts posts={posts} />  {/* Passa as postagens para o componente Posts */}
     </div>
   );
 }
