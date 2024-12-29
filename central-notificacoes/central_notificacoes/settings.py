@@ -87,11 +87,14 @@ TEMPLATES = [
     },
 ]
 
+REDIS_HOST = '172.28.39.80'
+REDIS_PORT = 6379
+
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            "hosts": [('172.28.39.80', 6379)],  # Use o IP do WSL
+            "hosts": [(REDIS_HOST, REDIS_PORT)],
         },
     },
 }
