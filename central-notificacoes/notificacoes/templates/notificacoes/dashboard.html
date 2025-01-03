@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Seus Posts</title>
+</head>
+<body>
+    <h1>Gerenciar Seus Posts</h1>
+
+    <!-- Exibir erros -->
+    {% if error %}
+        <p style="color: red;">{{ error }}</p>
+    {% endif %}
+
+    <!-- Formulário para criar um novo post -->
+    <form method="POST" enctype="multipart/form-data" style="margin-bottom: 20px;">
+        {% csrf_token %}
+        <label for="title">Título:</label><br>
+        <input type="text" id="title" name="title" required><br><br>
+
+        <label for="subtitle">Subtítulo:</label><br>
+        <input type="text" id="subtitle" name="subtitle" required><br><br>
+
+        <label for="image">Imagem:</label><br>
+        <input type="file" id="image" name="image"><br><br>
+
+        <button type="submit">Criar Post</button>
+    </form>
+
+    <!-- Lista de posts -->
+    <h2>Seus Posts</h2>
+    {% for post in posts %}
+        <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 10px;">
+            <h3>{{ post.title }}</h3>
+            <p>{{ post.subtitle }}</p>
+            {% if post.image %}
+                <img src="{{ post.image.url }}" alt="Imagem do post" style="width: 100px;">
+            {% endif %}
+            <form method="POST" action="{% url 'delete_post' post.id %}" style="margin-top: 10px;">
+                {% csrf_token %}
+                <button type="submit" style="background-color: red; color: white;">Excluir</button>
+            </form>
+        </div>
+    {% empty %}
+        <p>Você ainda não criou nenhum post.</p>
+    {% endfor %}
+</body>
+</html>

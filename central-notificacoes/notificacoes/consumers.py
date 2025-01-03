@@ -54,11 +54,19 @@ class PostConsumer(AsyncWebsocketConsumer):
             self.channel_name
         )
 
-    # Receive message from WebSocket
     async def post_message(self, event):
         post = event['post']
 
-        # Send post to WebSocket
+        # Envia o post para o WebSocket
         await self.send(text_data=json.dumps({
+            'action': 'add',
             'post': post
+        }))
+
+    async def delete_post_message(self, event):
+        post_id = event['post_id']
+        logger.info(f"Mensagem de exclusão enviada para o WebSocket: Post ID {post_id}")
+        await self.send(text_data=json.dumps({
+            'action': 'delete',
+            'post_id': post_id
         }))

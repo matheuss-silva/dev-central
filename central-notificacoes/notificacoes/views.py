@@ -2,12 +2,13 @@ import json
 import logging
 from django.contrib.auth import authenticate, login, logout, get_user_model
 from django.http import JsonResponse, HttpResponseRedirect
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from .models import Notification, Post
+from django.contrib.admin.views.decorators import staff_member_required
 
 
 logger = logging.getLogger(__name__)
@@ -71,6 +72,7 @@ def home(request):
         'posts': posts  # Enviar as postagens para o template
     })
 
+@staff_member_required
 @csrf_exempt
 def send_notification(request):
     if request.method == "POST":
@@ -81,7 +83,7 @@ def send_notification(request):
             return JsonResponse({'error': 'Dados inválidos'}, status=400)
 
         try:
-            # Cria a notificação (opcional para salvar no banco)
+            # Cria a notificação
             notification = Notification.objects.create(
                 recipient=None,  # Nenhum destinatário específico
                 title=title,
@@ -98,7 +100,6 @@ def send_notification(request):
             return JsonResponse({'error': str(e)}, status=500)
     else:
         return JsonResponse({'error': 'Método inválido'}, status=405)
-
 
 @csrf_exempt
 def mark_notification_as_read(request):
@@ -162,3 +163,70 @@ def send_post_to_users(post):
             }
         }
     )
+
+@login_required
+def user_dashboard(request):
+    """
+    Exibe os posts do usuário autenticado e permite criar novos posts.
+    """
+    error = None
+
+    if request.method == 'POST':
+        title = request.POST.get('title')
+        subtitle = request.POST.get('subtitle')
+        image = request.FILES.get('image')
+
+        if title and subtitle:
+            try:
+                # Criação do post
+                post = Post.objects.create(
+                    title=title,
+                    subtitle=subtitle,
+                    image=image,
+                    author=request.user
+                )
+
+                # Enviar o post via WebSocket
+                channel_layer = get_channel_layer()
+                async_to_sync(channel_layer.group_send)(
+                    'posts_group',
+                    {
+                        'type': 'post_message',
+                        'post': {
+                            'title': post.title,
+                            'subtitle': post.subtitle,
+                            'image_url': post.image.url if post.image else '',
+                            'author': post.author.username,
+                        }
+                    }
+                )
+
+            except Exception as e:
+                error = f"Ocorreu um erro ao criar o post: {e}"
+        else:
+            error = "Por favor, preencha todos os campos obrigatórios."
+
+    posts = Post.objects.filter(author=request.user).order_by('-created_at')
+    return render(request, 'notificacoes/dashboard.html', {'posts': posts, 'error': error})
+
+
+
+@login_required
+def delete_post(request, post_id):
+    """
+    Exclui um post pertencente ao usuário autenticado.
+    """
+    post = get_object_or_404(Post, id=post_id, author=request.user)
+    post.delete()
+
+    # Enviar uma mensagem de exclusão via WebSocket (se necessário)
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        'posts_group',
+        {
+            'type': 'delete_post_message',
+            'post_id': post_id
+        }
+    )
+
+    return redirect('user_dashboard')

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel do Usuário</title>
+</head>
+<body>
+    <h1>Painel do Usuário</h1>
+    <a href="{% url 'home' %}">Voltar para a Home</a>
+
+    <!-- Formulário para adicionar novos posts -->
+    <h2>Adicionar Novo Post</h2>
+    <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        <label for="title">Título:</label>
+        <input type="text" name="title" id="title" required><br>
+
+        <label for="subtitle">Subtítulo:</label>
+        <input type="text" name="subtitle" id="subtitle" required><br>
+
+        <label for="image">Imagem:</label>
+        <input type="file" name="image" id="image"><br><br>
+
+        <button type="submit">Adicionar Post</button>
+    </form>
+
+    <!-- Lista de posts do usuário -->
+    <h2>Seus Posts</h2>
+    <ul>
+        {% for post in posts %}
+            <li>
+                <strong>{{ post.title }}</strong> - {{ post.created_at }}
+                <br>
+                <a href="{% url 'delete_post' post.id %}" style="color: red;">Excluir</a>
+            </li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

@@ -57,10 +57,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const postElement = document.querySelector(`[data-post-id="${postId}"]`);
         if (postElement) {
             postElement.remove();
-            console.log(`Post com ID ${postId} removido da interface.`);
-        } else {
-            console.error(`Post com ID ${postId} não encontrado na interface.`);
         }
     }
-    
 });

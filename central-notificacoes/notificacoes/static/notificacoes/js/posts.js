@@ -18,9 +18,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
     socket.onmessage = function(event) {
         const data = JSON.parse(event.data);
-        const post = data['post'];
-        console.log('Novo post recebido via WebSocket:', post);
-        addPost(post);
+        const action = data['action'];
+
+        if (action === 'add') {
+            const post = data['post'];
+            console.log('Novo post recebido via WebSocket:', post);
+            addPost(post);
+        } else if (action === 'delete') {
+            const postId = data['post_id'];
+            console.log('Post excluído via WebSocket:', postId);
+            removePost(postId);
+        }
     };
 
     socket.onclose = function() {
@@ -34,6 +42,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function addPost(post) {
         const postElement = document.createElement('div');
         postElement.className = 'post';
+        postElement.setAttribute('data-post-id', post.id);
 
         postElement.innerHTML = `
             <h2>${post.title}</h2>
@@ -43,4 +52,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
         postsContainer.prepend(postElement);
     }
+
+    function removePost(postId) {
+        const postElement = document.querySelector(`[data-post-id="${postId}"]`);
+        if (postElement) {
+            postElement.remove();
+            console.log(`Post com ID ${postId} removido da interface.`);
+        } else {
+            console.error(`Post com ID ${postId} não encontrado na interface.`);
+        }
+    }
+    
 });
