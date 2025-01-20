@@ -43,13 +43,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const postElement = document.createElement('div');
         postElement.className = 'post';
         postElement.setAttribute('data-post-id', post.id);
-
+        postElement.style.cssText = 'margin-bottom: 20px; border: 1px solid #ccc; padding: 10px; border-radius: 5px;';
+    
         postElement.innerHTML = `
             <h2>${post.title}</h2>
             <h4>${post.subtitle}</h4>
-            <img src="${post.image_url}" alt="Imagem do post" class="post-image" style="width: 100px;">
+            <p><strong>Autor:</strong> ${post.author}</p>
+            ${post.image_url ? `<img src="${post.image_url}" alt="Imagem do post" class="post-image" style="width: 100px;">` : ''}
         `;
-
+    
         postsContainer.prepend(postElement);
     }
 

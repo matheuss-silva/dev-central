@@ -17,22 +17,31 @@
         </a>
     {% endif %}
 
+    <a href="{% url 'profile' %}" 
+    style="display: block; margin: 20px 0; text-decoration: none; background-color: #28a745; color: white; padding: 10px; border-radius: 5px; text-align: center;">
+     Gerenciar Perfil
+ </a>
+
     <!-- Container para notificações -->
     <div id="push-notification-area" data-user-id="{{ user_id_json }}">
         <p>Sem notificações no momento.</p>
     </div>
 
+
+
+
     <!-- Container para posts -->
     <div id="post-container" data-user-id="{{ user_id_json }}">
         {% if posts %}
             {% for post in posts %}
-                <div class="post" data-post-id="{{ post.id }}" style="margin-bottom: 20px; border: 1px solid #ccc; padding: 10px; border-radius: 5px;">
-                    <h2>{{ post.title }}</h2>
-                    <h4>{{ post.subtitle }}</h4>
-                    {% if post.image %}
-                        <img src="{{ post.image.url }}" alt="Imagem do post" class="post-image" style="width: 100px;">
-                    {% endif %}
-                </div>
+            <div class="post" data-post-id="{{ post.id }}" style="margin-bottom: 20px; border: 1px solid #ccc; padding: 10px; border-radius: 5px;">
+                <h2>{{ post.title }}</h2>
+                <h4>{{ post.subtitle }}</h4>
+                <p><strong>Autor:</strong> {{ post.author.username }}</p>
+                {% if post.image %}
+                    <img src="{{ post.image.url }}" alt="Imagem do post" class="post-image" style="width: 100px;">
+                {% endif %}
+            </div>
             {% endfor %}
         {% else %}
             <p>Sem postagens no momento.</p>

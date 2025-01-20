@@ -20,33 +20,47 @@ def login_view(request):
     Exibe a tela de login e autentica o usuário.
     """
     if request.method == 'POST':
-        username = request.POST['username']
-        password = request.POST['password']
+        username = request.POST.get('username')
+        password = request.POST.get('password')
         user = authenticate(username=username, password=password)
+
         if user is not None:
             login(request, user)
             logger.info(f'User {user.username} logged in successfully.')
             return redirect('/home/')  # Redireciona para a página home
         else:
             logger.error('Failed login attempt.')
-            return render(request, 'notificacoes/login.html', {'error': 'Credenciais inválidas. Tente novamente.'})
-    
+            return render(request, 'notificacoes/login.html', {'error': 'Usuário ou senha inválidos.'})
+
     return render(request, 'notificacoes/login.html')
+
 
 def register_user(request):
     """
     Exibe a tela de registro e cria um novo usuário.
     """
     if request.method == 'POST':
-        username = request.POST['username']
-        password = request.POST['password']
-        confirm_password = request.POST['confirm_password']
+        username = request.POST.get('username')
+        full_name = request.POST.get('full_name')
+        password = request.POST.get('password')
+        confirm_password = request.POST.get('confirm_password')
 
+        # Verifica se as senhas coincidem
         if password != confirm_password:
             return render(request, 'notificacoes/register.html', {'error': 'As senhas não coincidem.'})
 
+        # Validação para campos obrigatórios
+        if not username or not full_name:
+            return render(request, 'notificacoes/register.html', {'error': 'Todos os campos são obrigatórios.'})
+
+        # Verifica se o nome de usuário já existe
+        if User.objects.filter(username=username).exists():
+            return render(request, 'notificacoes/register.html', {'error': 'O nome de usuário já está em uso.'})
+
         try:
+            # Cria um novo usuário
             user = User.objects.create_user(username=username, password=password)
+            user.first_name = full_name
             user.save()
             logger.info(f'User {user.username} registered successfully.')
             return redirect('/')  # Redireciona para a tela de login
@@ -55,6 +69,7 @@ def register_user(request):
             return render(request, 'notificacoes/register.html', {'error': 'Erro ao criar a conta. Tente novamente.'})
     
     return render(request, 'notificacoes/register.html')
+
 
 
 @login_required
@@ -71,6 +86,43 @@ def home(request):
         'user_id_json': user_id_json,
         'posts': posts  # Enviar as postagens para o template
     })
+
+
+@login_required
+def profile_view(request):
+    """
+    Exibe a tela de gerenciamento de perfil do usuário.
+    """
+    user = request.user
+    error = None
+    success = None
+
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        full_name = request.POST.get('full_name')
+        password = request.POST.get('password')
+
+        # Verifica se o username já está em uso por outro usuário
+        if username != user.username and User.objects.filter(username=username).exists():
+            error = 'Este username já está em uso. Por favor, escolha outro.'
+        else:
+            # Atualiza os dados do usuário
+            user.username = username
+            user.first_name = full_name
+            if password:
+                user.set_password(password)
+            user.save()
+            success = 'Seu perfil foi atualizado com sucesso.'
+            # Reautenticar o usuário caso a senha seja alterada
+            if password:
+                login(request, user)
+
+    return render(request, 'notificacoes/profile.html', {
+        'user': user,
+        'error': error,
+        'success': success
+    })
+
 
 @staff_member_required
 @csrf_exempt
@@ -156,6 +208,7 @@ def send_post_to_users(post):
         {
             'type': 'post_message',  # Tipo de evento que será capturado pelo WebSocket
             'post': {
+                'id': post.id,
                 'title': post.title,
                 'subtitle': post.subtitle,
                 'image_url': post.image.url if post.image else '',
