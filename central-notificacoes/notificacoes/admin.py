@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Notification, Post
+from .models import Notification, Post, Event
 from .views import send_notification_to_group, send_post_to_users
 
 
@@ -64,6 +64,14 @@ class PostAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 
-# Registra os modelos no Django Admin
+@admin.register(Event)  # Este decorador já registra o modelo
+class EventAdmin(admin.ModelAdmin):
+    list_display = ('name', 'status', 'start_date', 'end_date')
+    list_filter = ('status',)
+    search_fields = ('name',)
+    readonly_fields = ('status',)
+
+
+# Registra os outros modelos no Django Admin
 admin.site.register(Notification, NotificationAdmin)
 admin.site.register(Post, PostAdmin)

@@ -9,7 +9,7 @@
 <body>
     <h1>Postagens em Tempo Real</h1>
 
-    <!-- Exibe o botão de painel personalizado apenas se o usuário estiver autenticado -->
+    <!-- Botões de Gerenciamento -->
     {% if user.is_authenticated %}
         <a href="{% url 'user_dashboard' %}" 
            style="display: block; margin: 20px 0; text-decoration: none; background-color: #007bff; color: white; padding: 10px; border-radius: 5px; text-align: center;">
@@ -18,19 +18,28 @@
     {% endif %}
 
     <a href="{% url 'profile' %}" 
-    style="display: block; margin: 20px 0; text-decoration: none; background-color: #28a745; color: white; padding: 10px; border-radius: 5px; text-align: center;">
-     Gerenciar Perfil
- </a>
+       style="display: block; margin: 20px 0; text-decoration: none; background-color: #28a745; color: white; padding: 10px; border-radius: 5px; text-align: center;">
+       Gerenciar Perfil
+    </a>
 
     <!-- Container para notificações -->
     <div id="push-notification-area" data-user-id="{{ user_id_json }}">
         <p>Sem notificações no momento.</p>
     </div>
 
-
-
-
-    <!-- Container para posts -->
+    <!-- Container para Evento -->
+    <div id="event-container" style="border: 1px solid #ccc; padding: 20px; margin-bottom: 20px; border-radius: 10px;">
+        <h2>Evento Atual</h2>
+        <p>Nome do evento: <span id="event-name">{% if event %}{{ event.name }}{% else %}Carregando...{% endif %}</span></p>
+        <p>Descrição: <span id="event-description">{% if event %}{{ event.description }}{% else %}Carregando...{% endif %}</span></p>
+        <p>Início: <span id="event-start">{% if event %}{{ event.start_date|date:"d/m/Y H:i" }}{% else %}Carregando...{% endif %}</span></p>
+        <p>Término: <span id="event-end">{% if event %}{{ event.end_date|date:"d/m/Y H:i" }}{% else %}Carregando...{% endif %}</span></p>
+        <p>Status: <span id="event-status" >
+            {% if event %}{{ event.get_status_display }}{% else %}Carregando...{% endif %}
+        </span></p>
+    </div>
+    
+    <!-- Container para Posts -->
     <div id="post-container" data-user-id="{{ user_id_json }}">
         {% if posts %}
             {% for post in posts %}
@@ -47,9 +56,10 @@
             <p>Sem postagens no momento.</p>
         {% endif %}
     </div>
-    
 
+    <!-- Scripts -->
     <script src="{% static 'notificacoes/js/push_notifications.js' %}"></script>
     <script src="{% static 'notificacoes/js/posts.js' %}"></script>
+    <script src="{% static 'notificacoes/js/event.js' %}"></script>
 </body>
 </html>

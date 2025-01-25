@@ -7,7 +7,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
-from .models import Notification, Post
+from .models import Notification, Post, Event
 from django.contrib.admin.views.decorators import staff_member_required
 
 
@@ -75,16 +75,19 @@ def register_user(request):
 @login_required
 def home(request):
     """
-    View para a tela home que passa o user_id e os posts para o template.
+    Exibe a tela inicial com informações do evento ativo e posts relacionados.
     """
-    user_id_json = json.dumps(request.user.id)
-    
-    # Buscar todas as postagens
-    posts = Post.objects.all().order_by('-created_at')  # Ordenar da mais recente para a mais antiga
-    
+    # Busca o evento ativo
+    event = Event.objects.filter(status='active').first()
+    if event:
+        event.auto_update_status()  # Atualiza automaticamente o status do evento, se necessário
+
+    posts = Post.objects.all().order_by('-created_at')
+
     return render(request, 'notificacoes/home.html', {
-        'user_id_json': user_id_json,
-        'posts': posts  # Enviar as postagens para o template
+        'user_id_json': json.dumps(request.user.id),
+        'posts': posts,
+        'event': event,  # Passa o evento para o template
     })
 
 
