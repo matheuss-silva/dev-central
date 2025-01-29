@@ -23,18 +23,42 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     function updateEvent(data) {
+        const eventContainer = document.getElementById("event-container");
         const eventNameElement = document.getElementById("event-name");
         const eventDescriptionElement = document.getElementById("event-description");
         const eventStartElement = document.getElementById("event-start");
         const eventEndElement = document.getElementById("event-end");
         const eventStatusElement = document.getElementById("event-status");
-
+        let eventLogoElement = document.getElementById("event-logo");
+    
         eventNameElement.textContent = data.name || "Não disponível";
         eventDescriptionElement.textContent = data.description || "Não disponível";
         eventStartElement.textContent = data.start_date || "Não disponível";
         eventEndElement.textContent = data.end_date || "Não disponível";
         eventStatusElement.textContent = data.status || "Não disponível";
-
+    
+        // Se o elemento da logo não existir, criamos um
+        if (!eventLogoElement) {
+            eventLogoElement = document.createElement("img");
+            eventLogoElement.id = "event-logo";
+            eventLogoElement.alt = "Logotipo do evento";
+            eventLogoElement.style.width = "100px";
+            eventLogoElement.style.marginBottom = "10px";
+            eventContainer.insertBefore(eventLogoElement, eventContainer.firstChild);
+        }
+    
+        // Atualiza o logotipo apenas se a URL for válida
+        if (data.logo_url) {
+            eventLogoElement.src = data.logo_url;
+            eventLogoElement.style.display = "block";
+        } else {
+            // Garante que a logo permanece caso já tenha sido carregada antes
+            if (!eventLogoElement.src) {
+                eventLogoElement.style.display = "none";
+            }
+        }
+    
+        // Altera a cor do status
         if (data.status === "Ativo") {
             eventStatusElement.style.color = "green";
         } else if (data.status === "Pausado") {
@@ -43,4 +67,8 @@ document.addEventListener("DOMContentLoaded", () => {
             eventStatusElement.style.color = "red";
         }
     }
+    
+    
+    
+    
 });

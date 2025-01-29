@@ -50,7 +50,7 @@ class Event(models.Model):
 
     name = models.CharField(max_length=255)
     description = models.TextField()
-    logo = models.ImageField(upload_to='events/logos/', null=True, blank=True)
+    logo = models.ImageField(upload_to='events/logos/', null=True, blank=True)  # Logotipo do evento
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='active')
@@ -80,17 +80,24 @@ class Event(models.Model):
         """Notifica os clientes sobre a mudança de status do evento."""
         from channels.layers import get_channel_layer
         from asgiref.sync import async_to_sync
-
+    
         channel_layer = get_channel_layer()
+    
+        # Obtém a URL da logo corretamente
+        logo_url = self.logo.url if self.logo else None
+    
         async_to_sync(channel_layer.group_send)(
             'event_status',
             {
-                'type': 'send_event_status',  # Deve corresponder ao tipo esperado no consumidor
+                'type': 'send_event_status',
                 'name': self.name,
                 'description': self.description,
                 'start_date': self.start_date.strftime('%d/%m/%Y %H:%M'),
                 'end_date': self.end_date.strftime('%d/%m/%Y %H:%M'),
                 'status': self.get_status_display(),
+                'logo_url': logo_url  # Garante que a URL da logo é enviada
             }
         )
+
+
 

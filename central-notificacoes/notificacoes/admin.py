@@ -64,12 +64,12 @@ class PostAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 
-@admin.register(Event)  # Este decorador já registra o modelo
+@admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
     list_display = ('name', 'status', 'start_date', 'end_date')
     list_filter = ('status',)
     search_fields = ('name',)
-    readonly_fields = ('status',)
+    fields = ('name', 'description', 'logo', 'start_date', 'end_date', 'status')  # Adiciona o campo logo
 
 
 # Registra os outros modelos no Django Admin
