@@ -16,7 +16,7 @@ document.addEventListener("DOMContentLoaded", () => {
     eventSocket.onclose = () => {
         console.log("⚠️ WebSocket de evento desconectado. Tentando reconectar...");
         setTimeout(() => {
-            window.location.reload();
+            window.location.reload(); // Recarregar página se a conexão for perdida
         }, 5000);
     };
 
@@ -28,6 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const eventContainer = document.getElementById("event-container");
 
         if (eventContainer) {
+            // Verifica se o evento é o mesmo antes de atualizar
             if (eventContainer.getAttribute("data-event-id") !== String(data.id)) {
                 eventContainer.setAttribute("data-event-id", data.id);
             }
@@ -48,14 +49,25 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }
 
+            // Atualizar cor do status dinamicamente
             const statusElement = document.getElementById("event-status");
             if (statusElement) {
-                statusElement.style.color = {
-                    "Ativo": "green",
-                    "Pausado": "orange",
-                    "Finalizado": "red"
-                }[data.status] || "black";
+                switch (data.status) {
+                    case "Ativo":
+                        statusElement.style.color = "green";
+                        break;
+                    case "Pausado":
+                        statusElement.style.color = "orange";
+                        break;
+                    case "Finalizado":
+                        statusElement.style.color = "red";
+                        break;
+                    default:
+                        statusElement.style.color = "black";
+                }
             }
+        } else {
+            console.error("⚠️ Elemento 'event-container' não encontrado na página.");
         }
     }
 });

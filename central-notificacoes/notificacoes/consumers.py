@@ -62,7 +62,12 @@ class EventConsumer(AsyncWebsocketConsumer):
 
     async def send_event_status(self, event):
         """Envia a atualização do evento para o WebSocket"""
-        schedule = await self.get_today_schedule(event)
+
+        # 🔹 Certifique-se de que estamos lidando com um objeto Django
+        if isinstance(event, dict):
+            event = await self.get_event_by_id(event["id"])
+
+        schedule = await self.get_today_schedule(event.id)
 
         start_date = schedule["start_date"] if schedule else "Não disponível"
         end_date = schedule["end_date"] if schedule else "Não disponível"
@@ -94,16 +99,22 @@ class EventConsumer(AsyncWebsocketConsumer):
         return event
 
     @database_sync_to_async
-    def get_today_schedule(self, event):
+    def get_event_by_id(self, event_id):
+        """Busca um evento específico pelo ID"""
+        return Event.objects.filter(id=event_id).first()
+
+    @database_sync_to_async
+    def get_today_schedule(self, event_id):
         """Busca o horário do evento para a data atual"""
         today = now().date()
-        schedule = event.schedules.filter(date=today).first()
-        
-        if schedule:
-            return {
-                "start_date": schedule.start_time.strftime('%H:%M'),
-                "end_date": schedule.end_time.strftime('%H:%M')
-            }
+        event = Event.objects.filter(id=event_id).first()
+        if event:
+            schedule = event.schedules.filter(date=today).first()
+            if schedule:
+                return {
+                    "start_date": schedule.start_time.strftime('%H:%M'),
+                    "end_date": schedule.end_time.strftime('%H:%M')
+                }
         return None
 
 

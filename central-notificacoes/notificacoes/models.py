@@ -75,24 +75,27 @@ class Event(models.Model):
         """
         Ao salvar um novo evento, ele inicia como 'Pausado' e depois muda automaticamente no horário certo.
         """
-        is_new = self.pk is None  # Verifica se é um novo evento
+        is_new = self.pk is None
 
         if is_new:
-            self.status = 'paused'  # Garante que começa como pausado
+            self.status = 'paused'
 
         super().save(*args, **kwargs)
 
         if not is_new:
-            self.auto_update_status()  # Atualiza status se já existir
+            self.auto_update_status()
+
+        # 🔹 Notifica WebSocket automaticamente após qualquer alteração
+        self.notify_status_change()
 
     def auto_update_status(self):
         """
         Atualiza automaticamente o status do evento com base nos horários definidos na programação.
         """
-        if not self.pk:  # Se o evento não tiver sido salvo ainda, não prossegue
+        if not self.pk:
             return
 
-        current_datetime = now()  # Obtém o datetime atual com timezone
+        current_datetime = now()
         today_schedule = self.schedules.filter(date=current_datetime.date()).first()
 
         if today_schedule:
@@ -110,8 +113,8 @@ class Event(models.Model):
 
         if self.status != new_status:
             self.status = new_status
-            self.save(update_fields=['status'])  # Evita recursão infinita
-            self.notify_status_change()  # Envia atualização via WebSocket
+            self.save(update_fields=['status'])  # 🔹 Agora sempre salva corretamente
+            self.notify_status_change()
 
     def notify_status_change(self):
         """Notifica os clientes via WebSocket sobre a mudança de status do evento."""

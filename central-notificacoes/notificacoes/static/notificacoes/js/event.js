@@ -16,7 +16,7 @@ document.addEventListener("DOMContentLoaded", () => {
     eventSocket.onclose = () => {
         console.log("⚠️ WebSocket de evento desconectado. Tentando reconectar...");
         setTimeout(() => {
-            window.location.reload(); // Recarregar página se a conexão for perdida
+            window.location.reload();
         }, 5000);
     };
 
@@ -27,39 +27,35 @@ document.addEventListener("DOMContentLoaded", () => {
     function updateEvent(data) {
         const eventContainer = document.getElementById("event-container");
 
-        // Verifica se o evento é o mesmo antes de atualizar
-        if (eventContainer.getAttribute("data-event-id") !== String(data.id)) {
-            eventContainer.setAttribute("data-event-id", data.id);
-        }
+        if (eventContainer) {
+            if (eventContainer.getAttribute("data-event-id") !== String(data.id)) {
+                eventContainer.setAttribute("data-event-id", data.id);
+            }
 
-        document.getElementById("event-name").textContent = data.name || "Não disponível";
-        document.getElementById("event-description").textContent = data.description || "Não disponível";
-        document.getElementById("event-start").textContent = data.start_date || "Não disponível";
-        document.getElementById("event-end").textContent = data.end_date || "Não disponível";
-        document.getElementById("event-status").textContent = data.status || "Não disponível";
+            document.getElementById("event-name").textContent = data.name || "Não disponível";
+            document.getElementById("event-description").textContent = data.description || "Não disponível";
+            document.getElementById("event-start").textContent = data.start_date || "Não disponível";
+            document.getElementById("event-end").textContent = data.end_date || "Não disponível";
+            document.getElementById("event-status").textContent = data.status || "Não disponível";
 
-        const eventLogoElement = document.getElementById("event-logo");
-        if (data.logo_url) {
-            eventLogoElement.src = data.logo_url;
-            eventLogoElement.style.display = "block";
-        } else {
-            eventLogoElement.style.display = "none";
-        }
+            const eventLogoElement = document.getElementById("event-logo");
+            if (eventLogoElement) {
+                if (data.logo_url) {
+                    eventLogoElement.src = data.logo_url;
+                    eventLogoElement.style.display = "block";
+                } else {
+                    eventLogoElement.style.display = "none";
+                }
+            }
 
-        // Atualizar cor do status dinamicamente
-        const statusElement = document.getElementById("event-status");
-        switch (data.status) {
-            case "Ativo":
-                statusElement.style.color = "green";
-                break;
-            case "Pausado":
-                statusElement.style.color = "orange";
-                break;
-            case "Finalizado":
-                statusElement.style.color = "red";
-                break;
-            default:
-                statusElement.style.color = "black";
+            const statusElement = document.getElementById("event-status");
+            if (statusElement) {
+                statusElement.style.color = {
+                    "Ativo": "green",
+                    "Pausado": "orange",
+                    "Finalizado": "red"
+                }[data.status] || "black";
+            }
         }
     }
 });
