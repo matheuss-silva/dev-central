@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Notification, Post, Event
+from .models import Notification, Post, Event, EventSchedule
 from .views import send_notification_to_group, send_post_to_users
 
 
@@ -64,12 +64,17 @@ class PostAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 
+class EventScheduleInline(admin.TabularInline):
+    model = EventSchedule
+    extra = 1  # Permite adicionar múltiplos horários para um evento
+
+
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
-    list_display = ('name', 'status', 'start_date', 'end_date')
+    list_display = ('name', 'status')
     list_filter = ('status',)
     search_fields = ('name',)
-    fields = ('name', 'description', 'logo', 'start_date', 'end_date', 'status')  # Adiciona o campo logo
+    inlines = [EventScheduleInline]  # Adiciona suporte para múltiplas datas e horários
 
 
 # Registra os outros modelos no Django Admin

@@ -3,32 +3,31 @@ document.addEventListener("DOMContentLoaded", () => {
     const eventSocket = new WebSocket(ws_scheme + "://" + window.location.host + "/ws/event/");
 
     eventSocket.onopen = () => {
-        console.log("✅ WebSocket para evento conectado.");
-        eventSocket.send(JSON.stringify({ action: "refresh" }));
+        console.log("WebSocket para evento conectado.");
     };
 
     eventSocket.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        console.log("🔄 Atualização do evento recebida:", data);
+        console.log("Atualização do evento recebida:", data);
         updateEvent(data);
     };
 
     eventSocket.onclose = () => {
-        console.log("⚠️ WebSocket de evento desconectado. Tentando reconectar...");
+        console.log("WebSocket de evento desconectado. Tentando reconectar...");
         setTimeout(() => {
             window.location.reload(); // Recarregar página se a conexão for perdida
         }, 5000);
     };
 
     eventSocket.onerror = (error) => {
-        console.error("❌ Erro no WebSocket de evento:", error);
+        console.error("Erro no WebSocket de evento:", error);
     };
 
     function updateEvent(data) {
         const eventContainer = document.getElementById("event-container");
 
         // Verifica se o evento é o mesmo antes de atualizar
-        if (eventContainer.getAttribute("data-event-id") !== String(data.id)) {
+        if (eventContainer.getAttribute("data-event-id") !== data.id) {
             eventContainer.setAttribute("data-event-id", data.id);
         }
 

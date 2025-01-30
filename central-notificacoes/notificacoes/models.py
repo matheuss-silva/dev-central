@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth import get_user_model
+from django.utils.timezone import now, make_aware, is_aware
+from datetime import datetime
 
 User = get_user_model()
 
@@ -41,6 +43,19 @@ class Post(models.Model):
         return self.title
 
 
+class EventSchedule(models.Model):
+    event = models.ForeignKey('Event', on_delete=models.CASCADE, related_name='schedules')
+    date = models.DateField()  # Data específica do evento
+    start_time = models.TimeField()  # Hora de início
+    end_time = models.TimeField()  # Hora de término
+
+    class Meta:
+        unique_together = ('event', 'date')  # Garante que um evento tenha apenas um registro por dia
+
+    def __str__(self):
+        return f"{self.event.name} - {self.date} ({self.start_time} - {self.end_time})"
+
+
 class Event(models.Model):
     STATUS_CHOICES = [
         ('active', 'Ativo'),
@@ -50,54 +65,68 @@ class Event(models.Model):
 
     name = models.CharField(max_length=255)
     description = models.TextField()
-    logo = models.ImageField(upload_to='events/logos/', null=True, blank=True)  # Logotipo do evento
-    start_date = models.DateTimeField()
-    end_date = models.DateTimeField()
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='active')
+    logo = models.ImageField(upload_to='events/logos/', null=True, blank=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='paused')
 
     def __str__(self):
         return self.name
 
     def save(self, *args, **kwargs):
+        """
+        Ao salvar um novo evento, ele inicia como 'Pausado' e depois muda automaticamente no horário certo.
+        """
+        is_new = self.pk is None  # Verifica se é um novo evento
+
+        if is_new:
+            self.status = 'paused'  # Garante que começa como pausado
+
         super().save(*args, **kwargs)
-        self.notify_status_change()
+
+        if not is_new:
+            self.auto_update_status()  # Atualiza status se já existir
 
     def auto_update_status(self):
-        from django.utils.timezone import now
-        old_status = self.status
+        """
+        Atualiza automaticamente o status do evento com base nos horários definidos na programação.
+        """
+        if not self.pk:  # Se o evento não tiver sido salvo ainda, não prossegue
+            return
 
-        if now() > self.end_date:
-            self.status = 'finished'
-        elif self.start_date <= now() <= self.end_date:
-            self.status = 'active'
+        current_datetime = now()  # Obtém o datetime atual com timezone
+        today_schedule = self.schedules.filter(date=current_datetime.date()).first()
+
+        if today_schedule:
+            start_datetime = today_schedule.start_time
+            end_datetime = today_schedule.end_time
+
+            if start_datetime <= current_datetime.time() <= end_datetime:
+                new_status = 'active'
+            elif current_datetime.time() > end_datetime:
+                new_status = 'finished'
+            else:
+                new_status = 'paused'
         else:
-            self.status = 'paused'
+            new_status = 'paused'
 
-        if old_status != self.status:
-            self.save()
+        if self.status != new_status:
+            self.status = new_status
+            self.save(update_fields=['status'])  # Evita recursão infinita
+            self.notify_status_change()  # Envia atualização via WebSocket
 
     def notify_status_change(self):
-        """Notifica os clientes sobre a mudança de status do evento."""
+        """Notifica os clientes via WebSocket sobre a mudança de status do evento."""
         from channels.layers import get_channel_layer
         from asgiref.sync import async_to_sync
-    
+
         channel_layer = get_channel_layer()
-    
-        # Obtém a URL da logo corretamente
-        logo_url = self.logo.url if self.logo else None
-    
         async_to_sync(channel_layer.group_send)(
             'event_status',
             {
                 'type': 'send_event_status',
+                'id': self.id,
                 'name': self.name,
                 'description': self.description,
-                'start_date': self.start_date.strftime('%d/%m/%Y %H:%M'),
-                'end_date': self.end_date.strftime('%d/%m/%Y %H:%M'),
                 'status': self.get_status_display(),
-                'logo_url': logo_url  # Garante que a URL da logo é enviada
+                'logo_url': self.logo.url if self.logo else None,
             }
         )
-
-
-

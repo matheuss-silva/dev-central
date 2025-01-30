@@ -3,72 +3,63 @@ document.addEventListener("DOMContentLoaded", () => {
     const eventSocket = new WebSocket(ws_scheme + "://" + window.location.host + "/ws/event/");
 
     eventSocket.onopen = () => {
-        console.log("WebSocket para evento conectado.");
+        console.log("✅ WebSocket para evento conectado.");
+        eventSocket.send(JSON.stringify({ action: "refresh" }));
     };
 
     eventSocket.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        console.log("Atualização do evento recebida:", data);
-
-        // Atualiza os campos do evento na página
+        console.log("🔄 Atualização do evento recebida:", data);
         updateEvent(data);
     };
 
     eventSocket.onclose = () => {
-        console.log("WebSocket de evento desconectado.");
+        console.log("⚠️ WebSocket de evento desconectado. Tentando reconectar...");
+        setTimeout(() => {
+            window.location.reload(); // Recarregar página se a conexão for perdida
+        }, 5000);
     };
 
     eventSocket.onerror = (error) => {
-        console.error("Erro no WebSocket de evento:", error);
+        console.error("❌ Erro no WebSocket de evento:", error);
     };
 
     function updateEvent(data) {
         const eventContainer = document.getElementById("event-container");
-        const eventNameElement = document.getElementById("event-name");
-        const eventDescriptionElement = document.getElementById("event-description");
-        const eventStartElement = document.getElementById("event-start");
-        const eventEndElement = document.getElementById("event-end");
-        const eventStatusElement = document.getElementById("event-status");
-        let eventLogoElement = document.getElementById("event-logo");
-    
-        eventNameElement.textContent = data.name || "Não disponível";
-        eventDescriptionElement.textContent = data.description || "Não disponível";
-        eventStartElement.textContent = data.start_date || "Não disponível";
-        eventEndElement.textContent = data.end_date || "Não disponível";
-        eventStatusElement.textContent = data.status || "Não disponível";
-    
-        // Se o elemento da logo não existir, criamos um
-        if (!eventLogoElement) {
-            eventLogoElement = document.createElement("img");
-            eventLogoElement.id = "event-logo";
-            eventLogoElement.alt = "Logotipo do evento";
-            eventLogoElement.style.width = "100px";
-            eventLogoElement.style.marginBottom = "10px";
-            eventContainer.insertBefore(eventLogoElement, eventContainer.firstChild);
+
+        // Verifica se o evento é o mesmo antes de atualizar
+        if (eventContainer.getAttribute("data-event-id") !== String(data.id)) {
+            eventContainer.setAttribute("data-event-id", data.id);
         }
-    
-        // Atualiza o logotipo apenas se a URL for válida
+
+        document.getElementById("event-name").textContent = data.name || "Não disponível";
+        document.getElementById("event-description").textContent = data.description || "Não disponível";
+        document.getElementById("event-start").textContent = data.start_date || "Não disponível";
+        document.getElementById("event-end").textContent = data.end_date || "Não disponível";
+        document.getElementById("event-status").textContent = data.status || "Não disponível";
+
+        const eventLogoElement = document.getElementById("event-logo");
         if (data.logo_url) {
             eventLogoElement.src = data.logo_url;
             eventLogoElement.style.display = "block";
         } else {
-            // Garante que a logo permanece caso já tenha sido carregada antes
-            if (!eventLogoElement.src) {
-                eventLogoElement.style.display = "none";
-            }
+            eventLogoElement.style.display = "none";
         }
-    
-        // Altera a cor do status
-        if (data.status === "Ativo") {
-            eventStatusElement.style.color = "green";
-        } else if (data.status === "Pausado") {
-            eventStatusElement.style.color = "orange";
-        } else {
-            eventStatusElement.style.color = "red";
+
+        // Atualizar cor do status dinamicamente
+        const statusElement = document.getElementById("event-status");
+        switch (data.status) {
+            case "Ativo":
+                statusElement.style.color = "green";
+                break;
+            case "Pausado":
+                statusElement.style.color = "orange";
+                break;
+            case "Finalizado":
+                statusElement.style.color = "red";
+                break;
+            default:
+                statusElement.style.color = "black";
         }
     }
-    
-    
-    
-    
 });
