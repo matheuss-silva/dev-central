@@ -69,37 +69,31 @@ class Event(models.Model):
     logo = models.ImageField(upload_to='events/logos/', null=True, blank=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='waiting')
 
-    def __str__(self):
-        return self.name
-
     def save(self, *args, **kwargs):
         """
-        Garante que o evento seja criado com o status correto e atualizado de forma adequada.
+        Garante que eventos novos sejam criados com status 'Aguardando Início'.
+        Evita que eventos alterados manualmente no admin sejam sobrescritos.
         """
-        is_new = self.pk is None  # Verifica se é um novo evento
+        is_new = self.pk is None  # Verifica se é um evento novo
 
         if is_new:
-            # Define explicitamente o status como "Aguardando Início" para evitar erro
-            self.status = 'waiting'
+            self.status = 'waiting'  # Define explicitamente o status inicial
 
-        super().save(*args, **kwargs)  # Salva o evento
+        super().save(*args, **kwargs)  # Salva o evento no banco de dados
 
-        # Se o status foi alterado manualmente no admin, notifica a mudança
-        if not is_new:
-            self.notify_status_change()
-
-        # Não alterar automaticamente se o status for "Ativo"
-        if self.status != 'active':
+        # Somente atualiza automaticamente se o status não foi alterado manualmente no Admin
+        if not is_new and self.status not in ['active', 'waiting']:
             self.auto_update_status()
 
     def auto_update_status(self):
         """
         Atualiza automaticamente o status do evento baseado no horário programado.
-        Se o evento estiver como "Ativo", não reverte a atualização manual.
+        Se o evento já estiver 'Ativo' ou for novo, não altera automaticamente.
         """
-        if not self.pk or self.status == 'active':  # Não altera status ativo manualmente
+        if self.status == 'active':  # Não altera status manualmente definido como 'Ativo'
             return
 
+        from django.utils.timezone import now
         current_datetime = now()
         today_schedule = self.schedules.filter(date=current_datetime.date()).first()
 
@@ -122,7 +116,7 @@ class Event(models.Model):
             self.notify_status_change()
 
     def notify_status_change(self):
-        """Notifica os clientes WebSocket sobre a mudança de status do evento."""
+        """Envia notificações via WebSocket sobre mudanças no status do evento."""
         from channels.layers import get_channel_layer
         from asgiref.sync import async_to_sync
 
@@ -141,7 +135,7 @@ class Event(models.Model):
                 'id': self.id,
                 'name': self.name,
                 'description': self.description,
-                'status': status_mapping.get(self.status, self.status),  # Converte para português
+                'status': status_mapping.get(self.status, self.status),
                 'logo_url': self.logo.url if self.logo else None,
             }
         )

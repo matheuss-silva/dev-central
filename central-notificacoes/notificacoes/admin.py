@@ -77,10 +77,17 @@ class EventAdmin(admin.ModelAdmin):
 
     def save_model(self, request, obj, form, change):
         """
-        Permite alteração manual do status no admin e garante que a atualização via WebSocket ocorra.
+        Garante que eventos novos sejam criados corretamente e impede sobrescrita do status ao editar no Admin.
         """
-        super().save_model(request, obj, form, change)  # Salva a alteração
-        obj.notify_status_change()  # Envia a notificação do WebSocket
+        if not change:  # Se for um novo evento
+            obj.status = 'waiting'
+
+        # Ao editar um evento, NÃO forçar auto_update_status()
+        super().save_model(request, obj, form, change)
+
+        # Apenas notifica mudanças no status, sem sobrescrever manualmente
+        obj.notify_status_change()
+
 
 
 # Registra os outros modelos no Django Admin
