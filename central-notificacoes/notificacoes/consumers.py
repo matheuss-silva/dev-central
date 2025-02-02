@@ -57,29 +57,42 @@ class EventConsumer(AsyncWebsocketConsumer):
     async def send_current_event(self):
         """Envia os detalhes do evento ativo para os clientes WebSocket"""
         event = await self.get_active_event()
+
         if event:
             await self.send_event_status(event)
+        else:
+            await self.send(text_data=json.dumps({
+                'error': 'Nenhum evento disponível no momento.'
+            }))
 
     async def send_event_status(self, event):
         """Envia a atualização do evento para o WebSocket"""
 
-        # 🔹 Certifique-se de que estamos lidando com um objeto Django
+        # 🔹 Se `event` for um dicionário, buscar do banco pelo ID
         if isinstance(event, dict):
-            event = await self.get_event_by_id(event["id"])
+            event = await self.get_event_by_id(event.get("id"))
+
+        # 🔹 Se `event` continuar sendo None, enviar resposta adequada
+        if event is None:
+            await self.send(text_data=json.dumps({
+                'error': 'Nenhum evento válido encontrado para exibir.'
+            }))
+            return
 
         schedule = await self.get_today_schedule(event.id)
 
         start_date = schedule["start_date"] if schedule else "Não disponível"
         end_date = schedule["end_date"] if schedule else "Não disponível"
 
+        # 🔹 Envia a atualização do status do evento
         await self.send(text_data=json.dumps({
             'id': event.id,
             'name': event.name,
             'description': event.description,
             'start_date': start_date,
             'end_date': end_date,
-            'status': event.get_status_display(),
-            'logo_url': event.logo.url if event.logo else None,
+            'status': event.status,  # Envia diretamente o status correto
+            'logo_url': event.logo.url if event.logo else None,  
         }))
 
     async def receive(self, text_data):
@@ -88,19 +101,24 @@ class EventConsumer(AsyncWebsocketConsumer):
         action = data.get("action")
 
         if action == "refresh":
-            await self.send_current_event()
+            event = await self.get_active_event()
+            if event:
+                await self.send_event_status(event)
 
     @database_sync_to_async
     def get_active_event(self):
-        """Busca o evento ativo e atualiza seu status antes de enviá-lo"""
-        event = Event.objects.first()
-        if event:
+        """
+        Busca o evento ativo ou aguardando início e atualiza seu status antes de enviá-lo.
+        Se o evento estiver como "Ativo", não altera automaticamente.
+        """
+        event = Event.objects.exclude(status='finished').first()
+        if event and event.status != 'active':  # Evita sobrescrever status manual
             event.auto_update_status()
         return event
 
     @database_sync_to_async
     def get_event_by_id(self, event_id):
-        """Busca um evento específico pelo ID"""
+        """Busca um evento específico pelo ID e evita erro de NoneType"""
         return Event.objects.filter(id=event_id).first()
 
     @database_sync_to_async

@@ -58,66 +58,78 @@ class EventSchedule(models.Model):
 
 class Event(models.Model):
     STATUS_CHOICES = [
+        ('waiting', 'Aguardando Início'),
         ('active', 'Ativo'),
-        ('paused', 'Pausado'),
+        ('closed', 'Encerrado (dia)'),
         ('finished', 'Finalizado'),
     ]
 
     name = models.CharField(max_length=255)
     description = models.TextField()
     logo = models.ImageField(upload_to='events/logos/', null=True, blank=True)
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='paused')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='waiting')
 
     def __str__(self):
         return self.name
 
     def save(self, *args, **kwargs):
         """
-        Ao salvar um novo evento, ele inicia como 'Pausado' e depois muda automaticamente no horário certo.
+        Salva um evento garantindo que alterações manuais e automáticas funcionem corretamente.
         """
-        is_new = self.pk is None
-
-        if is_new:
-            self.status = 'paused'
-
-        super().save(*args, **kwargs)
+        is_new = self.pk is None  # Verifica se é um evento novo
+        status_anterior = None
 
         if not is_new:
-            self.auto_update_status()
+            # Obtém o status antes da alteração
+            status_anterior = Event.objects.get(pk=self.pk).status  
 
-        # 🔹 Notifica WebSocket automaticamente após qualquer alteração
-        self.notify_status_change()
+        super().save(*args, **kwargs)  # Salva o evento
+
+        if is_new:
+            # Se for novo, define "Aguardando Início"
+            self.status = 'waiting'
+            self.save(update_fields=['status'])
+            self.notify_status_change()
+
+        elif status_anterior and status_anterior != self.status:
+            # Se foi alterado manualmente no Admin, dispara notificação WebSocket
+            self.notify_status_change()
+
+        # **Não alterar se o status for "Ativo" manualmente**
+        if self.status != 'active':
+            self.auto_update_status()
 
     def auto_update_status(self):
         """
-        Atualiza automaticamente o status do evento com base nos horários definidos na programação.
+        Atualiza automaticamente o status do evento baseado no horário programado.
+        Se o evento estiver como "Ativo", não reverte a atualização manual.
         """
-        if not self.pk:
+        if not self.pk or self.status == 'active':  # Não altera status ativo manualmente
             return
 
         current_datetime = now()
         today_schedule = self.schedules.filter(date=current_datetime.date()).first()
 
         if today_schedule:
-            start_datetime = today_schedule.start_time
-            end_datetime = today_schedule.end_time
+            start_time = today_schedule.start_time
+            end_time = today_schedule.end_time
 
-            if start_datetime <= current_datetime.time() <= end_datetime:
+            if start_time <= current_datetime.time() < end_time:
                 new_status = 'active'
-            elif current_datetime.time() > end_datetime:
-                new_status = 'finished'
+            elif current_datetime.time() >= end_time:
+                new_status = 'closed'
             else:
-                new_status = 'paused'
+                new_status = 'waiting'
         else:
-            new_status = 'paused'
+            new_status = 'finished'  # Se não houver programação, finaliza o evento
 
         if self.status != new_status:
             self.status = new_status
-            self.save(update_fields=['status'])  # 🔹 Agora sempre salva corretamente
+            self.save(update_fields=['status'])
             self.notify_status_change()
 
     def notify_status_change(self):
-        """Notifica os clientes via WebSocket sobre a mudança de status do evento."""
+        """Notifica os clientes WebSocket sobre a mudança de status do evento."""
         from channels.layers import get_channel_layer
         from asgiref.sync import async_to_sync
 
@@ -129,7 +141,7 @@ class Event(models.Model):
                 'id': self.id,
                 'name': self.name,
                 'description': self.description,
-                'status': self.get_status_display(),
+                'status': self.status,  # Envia diretamente o status correto
                 'logo_url': self.logo.url if self.logo else None,
             }
         )

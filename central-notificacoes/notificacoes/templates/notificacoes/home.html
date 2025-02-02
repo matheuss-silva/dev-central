@@ -32,14 +32,14 @@
          style="border: 1px solid #ccc; padding: 20px; margin-bottom: 20px; border-radius: 10px;">
         <h2>Evento Atual</h2>
         <p>
-            <img id="event-logo" src="{% if event and event.logo %}{{ event.logo.url }}{% endif %}"
-                 alt="Logotipo do evento">
+            <img id="event-logo" src="{% if event and event.logo %}{{ event.logo.url }}{% else %}# {% endif %}"
+                alt="Logotipo do evento">
         </p>
         <p>Nome do evento: <span id="event-name">{% if event %}{{ event.name }}{% else %}Carregando...{% endif %}</span></p>
         <p>Descrição: <span id="event-description">{% if event %}{{ event.description }}{% else %}Carregando...{% endif %}</span></p>
         <p>Início: <span id="event-start">{% if event %}{{ event.start_date|date:"d/m/Y H:i" }}{% else %}Carregando...{% endif %}</span></p>
         <p>Término: <span id="event-end">{% if event %}{{ event.end_date|date:"d/m/Y H:i" }}{% else %}Carregando...{% endif %}</span></p>
-        <p>Status: <span id="event-status">{% if event %}{{ event.get_status_display }}{% else %}Carregando...{% endif %}</span></p>
+        <p>Status: <span id="event-status">Carregando...</span></p>
     </div>
 
 

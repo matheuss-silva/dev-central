@@ -22,7 +22,7 @@ document.addEventListener("DOMContentLoaded", () => {
         console.log("⚠️ WebSocket de evento desconectado. Tentando reconectar...");
         setTimeout(() => {
             window.location.reload();
-        }, 10000);
+        }, 5000);
     };
 
     eventSocket.onerror = (error) => {

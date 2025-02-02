@@ -68,13 +68,19 @@ class EventScheduleInline(admin.TabularInline):
     model = EventSchedule
     extra = 1  # Permite adicionar múltiplos horários para um evento
 
-
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
     list_display = ('name', 'status')
     list_filter = ('status',)
     search_fields = ('name',)
-    inlines = [EventScheduleInline]  # Adiciona suporte para múltiplas datas e horários
+    inlines = [EventScheduleInline]
+
+    def save_model(self, request, obj, form, change):
+        """
+        Permite alteração manual do status no admin e garante que a atualização via WebSocket ocorra.
+        """
+        super().save_model(request, obj, form, change)  # Salva a alteração
+        obj.notify_status_change()  # Envia a notificação do WebSocket
 
 
 # Registra os outros modelos no Django Admin

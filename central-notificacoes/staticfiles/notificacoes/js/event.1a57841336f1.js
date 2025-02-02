@@ -12,9 +12,18 @@ document.addEventListener("DOMContentLoaded", () => {
         console.log("🔄 Atualização do evento recebida:", data);
         updateEvent(data);
 
-        // 🚀 Apenas iniciar o loop de atualização se o evento ainda não começou
-        if (data.start_date && data.status !== "Ativo" && data.status !== "active") {
-            startUpdateLoop(data.start_date);
+        // 🚀 Agendar um refresh 2 segundos após o horário de início do evento
+        if (data.start_date && (data.status === "Aguardando Início" || data.status === "waiting")) {
+            const eventStartTime = convertTimeToDate(data.start_date);
+            const now = new Date();
+            
+            if (now >= eventStartTime) {
+                console.log(`⏳ Evento deveria ter iniciado às ${eventStartTime.toLocaleTimeString()}! Agendando atualização...`);
+                setTimeout(() => {
+                    console.log("🔄 FORÇANDO atualização do status do evento via WebSocket...");
+                    eventSocket.send(JSON.stringify({ action: "refresh" }));
+                }, 2000);
+            }
         }
     };
 
@@ -22,7 +31,7 @@ document.addEventListener("DOMContentLoaded", () => {
         console.log("⚠️ WebSocket de evento desconectado. Tentando reconectar...");
         setTimeout(() => {
             window.location.reload();
-        }, 10000);
+        }, 5000);
     };
 
     eventSocket.onerror = (error) => {
@@ -72,30 +81,5 @@ document.addEventListener("DOMContentLoaded", () => {
         const now = new Date();
         now.setHours(hours, minutes, 0, 0); 
         return now;
-    }
-
-    function startUpdateLoop(startDate) {
-        const eventStartTime = convertTimeToDate(startDate);
-        const now = new Date();
-
-        if (now >= eventStartTime) {
-            console.log(`✅ Evento deveria ter iniciado! Disparando atualização forçada...`);
-            eventSocket.send(JSON.stringify({ action: "refresh" }));
-            return;
-        }
-
-        console.log(`⏳ Evento ainda não começou. Atualizando a cada 5 segundos até ${eventStartTime.toLocaleTimeString()}...`);
-
-        const interval = setInterval(() => {
-            const currentTime = new Date();
-            if (currentTime >= eventStartTime) {
-                console.log("🚀 Evento começou! Disparando atualização final...");
-                eventSocket.send(JSON.stringify({ action: "refresh" }));
-                clearInterval(interval);
-            } else {
-                console.log("🔄 Forçando atualização do status...");
-                eventSocket.send(JSON.stringify({ action: "refresh" }));
-            }
-        }, 5000);
     }
 });
