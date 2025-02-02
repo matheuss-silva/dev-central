@@ -74,28 +74,21 @@ class Event(models.Model):
 
     def save(self, *args, **kwargs):
         """
-        Salva um evento garantindo que alterações manuais e automáticas funcionem corretamente.
+        Garante que o evento seja criado com o status correto e atualizado de forma adequada.
         """
-        is_new = self.pk is None  # Verifica se é um evento novo
-        status_anterior = None
+        is_new = self.pk is None  # Verifica se é um novo evento
 
-        if not is_new:
-            # Obtém o status antes da alteração
-            status_anterior = Event.objects.get(pk=self.pk).status  
+        if is_new:
+            # Define explicitamente o status como "Aguardando Início" para evitar erro
+            self.status = 'waiting'
 
         super().save(*args, **kwargs)  # Salva o evento
 
-        if is_new:
-            # Se for novo, define "Aguardando Início"
-            self.status = 'waiting'
-            self.save(update_fields=['status'])
+        # Se o status foi alterado manualmente no admin, notifica a mudança
+        if not is_new:
             self.notify_status_change()
 
-        elif status_anterior and status_anterior != self.status:
-            # Se foi alterado manualmente no Admin, dispara notificação WebSocket
-            self.notify_status_change()
-
-        # **Não alterar se o status for "Ativo" manualmente**
+        # Não alterar automaticamente se o status for "Ativo"
         if self.status != 'active':
             self.auto_update_status()
 
@@ -133,6 +126,13 @@ class Event(models.Model):
         from channels.layers import get_channel_layer
         from asgiref.sync import async_to_sync
 
+        status_mapping = {
+            'waiting': 'Aguardando Início',
+            'active': 'Ativo',
+            'closed': 'Encerrado (dia)',
+            'finished': 'Finalizado'
+        }
+
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(
             'event_status',
@@ -141,7 +141,7 @@ class Event(models.Model):
                 'id': self.id,
                 'name': self.name,
                 'description': self.description,
-                'status': self.status,  # Envia diretamente o status correto
+                'status': status_mapping.get(self.status, self.status),  # Converte para português
                 'logo_url': self.logo.url if self.logo else None,
             }
         )

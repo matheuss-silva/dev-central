@@ -68,11 +68,9 @@ class EventConsumer(AsyncWebsocketConsumer):
     async def send_event_status(self, event):
         """Envia a atualização do evento para o WebSocket"""
 
-        # 🔹 Se `event` for um dicionário, buscar do banco pelo ID
         if isinstance(event, dict):
             event = await self.get_event_by_id(event.get("id"))
 
-        # 🔹 Se `event` continuar sendo None, enviar resposta adequada
         if event is None:
             await self.send(text_data=json.dumps({
                 'error': 'Nenhum evento válido encontrado para exibir.'
@@ -84,14 +82,21 @@ class EventConsumer(AsyncWebsocketConsumer):
         start_date = schedule["start_date"] if schedule else "Não disponível"
         end_date = schedule["end_date"] if schedule else "Não disponível"
 
-        # 🔹 Envia a atualização do status do evento
+        # Mapeamento para garantir que o status seja enviado em português
+        status_mapping = {
+            'waiting': 'Aguardando Início',
+            'active': 'Ativo',
+            'closed': 'Encerrado (dia)',
+            'finished': 'Finalizado'
+        }
+
         await self.send(text_data=json.dumps({
             'id': event.id,
             'name': event.name,
             'description': event.description,
             'start_date': start_date,
             'end_date': end_date,
-            'status': event.status,  # Envia diretamente o status correto
+            'status': status_mapping.get(event.status, event.status),  # Envia status em português
             'logo_url': event.logo.url if event.logo else None,  
         }))
 
@@ -134,6 +139,7 @@ class EventConsumer(AsyncWebsocketConsumer):
                     "end_date": schedule.end_time.strftime('%H:%M')
                 }
         return None
+
 
 
 class PostConsumer(AsyncWebsocketConsumer):
