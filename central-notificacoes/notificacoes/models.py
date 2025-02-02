@@ -1,7 +1,6 @@
 from django.db import models
+from django.utils.timezone import now
 from django.contrib.auth import get_user_model
-from django.utils.timezone import now, make_aware, is_aware
-from datetime import datetime
 
 User = get_user_model()
 
@@ -70,32 +69,29 @@ class Event(models.Model):
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='waiting')
 
     def save(self, *args, **kwargs):
-        """
-        Garante que eventos novos sejam criados com status 'Aguardando Início'.
-        Evita que eventos alterados manualmente no admin sejam sobrescritos.
-        """
-        is_new = self.pk is None  # Verifica se é um evento novo
+        """ Garante que eventos novos comecem como 'Aguardando Início' e não sobrescreve status manual. """
+        is_new = self.pk is None  # Verifica se é um novo evento
 
         if is_new:
             self.status = 'waiting'  # Define explicitamente o status inicial
 
         super().save(*args, **kwargs)  # Salva o evento no banco de dados
 
-        # Somente atualiza automaticamente se o status não foi alterado manualmente no Admin
-        if not is_new and self.status not in ['active', 'waiting']:
+        # Atualiza automaticamente o status apenas para eventos já existentes
+        if not is_new:
             self.auto_update_status()
 
     def auto_update_status(self):
-        """
-        Atualiza automaticamente o status do evento baseado no horário programado.
-        Se o evento já estiver 'Ativo' ou for novo, não altera automaticamente.
-        """
-        if self.status == 'active':  # Não altera status manualmente definido como 'Ativo'
+        """ Atualiza automaticamente o status do evento baseado no horário programado. """
+        if self.status == 'active':  # Evita alterar status manualmente definido como 'Ativo'
             return
 
-        from django.utils.timezone import now
         current_datetime = now()
         today_schedule = self.schedules.filter(date=current_datetime.date()).first()
+        future_schedules = self.schedules.filter(date__gt=current_datetime.date()).exists()
+
+        # Inicializa new_status com o status atual
+        new_status = self.status  
 
         if today_schedule:
             start_time = today_schedule.start_time
@@ -104,19 +100,20 @@ class Event(models.Model):
             if start_time <= current_datetime.time() < end_time:
                 new_status = 'active'
             elif current_datetime.time() >= end_time:
-                new_status = 'closed'
-            else:
-                new_status = 'waiting'
+                # Se há mais dias configurados, muda para "Encerrado (dia)", senão "Finalizado"
+                new_status = 'closed' if future_schedules else 'finished'
         else:
-            new_status = 'finished'  # Se não houver programação, finaliza o evento
+            # Se não há mais datas futuras, marca como finalizado
+            new_status = 'finished' if not future_schedules else 'waiting'
 
+        # Apenas atualiza se houver mudança de status
         if self.status != new_status:
             self.status = new_status
             self.save(update_fields=['status'])
             self.notify_status_change()
 
     def notify_status_change(self):
-        """Envia notificações via WebSocket sobre mudanças no status do evento."""
+        """ Envia notificações via WebSocket sobre mudanças no status do evento. """
         from channels.layers import get_channel_layer
         from asgiref.sync import async_to_sync
 

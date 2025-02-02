@@ -77,17 +77,18 @@ document.addEventListener("DOMContentLoaded", () => {
     function startUpdateLoop(startDate) {
         const eventStartTime = convertTimeToDate(startDate);
         const now = new Date();
-
+    
         if (now >= eventStartTime) {
             console.log(`✅ Evento deveria ter iniciado! Disparando atualização forçada...`);
             eventSocket.send(JSON.stringify({ action: "refresh" }));
             return;
         }
-
+    
         console.log(`⏳ Evento ainda não começou. Atualizando a cada 5 segundos até ${eventStartTime.toLocaleTimeString()}...`);
-
+    
         const interval = setInterval(() => {
             const currentTime = new Date();
+    
             if (currentTime >= eventStartTime) {
                 console.log("🚀 Evento começou! Disparando atualização final...");
                 eventSocket.send(JSON.stringify({ action: "refresh" }));
@@ -97,5 +98,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 eventSocket.send(JSON.stringify({ action: "refresh" }));
             }
         }, 5000);
+    
+        // Adiciona um check para mudar o status no início do próximo dia
+        setInterval(() => {
+            const currentTime = new Date();
+            if (currentTime.getHours() === 0 && currentTime.getMinutes() === 0) {
+                console.log("🌅 Novo dia detectado, verificando atualização do evento...");
+                eventSocket.send(JSON.stringify({ action: "refresh" }));
+            }
+        }, 60000); // Checa a cada 1 minuto
     }
+    
 });
