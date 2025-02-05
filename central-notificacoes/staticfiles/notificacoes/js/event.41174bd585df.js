@@ -12,12 +12,13 @@ document.addEventListener("DOMContentLoaded", () => {
         console.log("🔄 Atualização do evento recebida:", data);
         updateEvent(data);
 
-        // 🚀 Iniciar monitoramento automático
+        // 🚀 Forçar atualização automática quando o status mudar
         if (data.status === "Ativo") {
             startEndTimeCheck(data.end_date);
-        } else if (data.status === "Encerrado (dia)" || data.status === "Finalizado") {
-            console.log("🔔 Status atualizado! Forçando atualização...");
-            eventSocket.send(JSON.stringify({ action: "refresh" }));
+        }
+
+        if (data.status !== "Finalizado" && data.status !== "Encerrado (dia)") {
+            startUpdateLoop(data.start_date, data.end_date);
         }
     };
 
@@ -75,6 +76,33 @@ document.addEventListener("DOMContentLoaded", () => {
         const now = new Date();
         now.setHours(hours, minutes, 0, 0);
         return now;
+    }
+
+    function startUpdateLoop(startDate, endDate) {
+        const eventStartTime = convertTimeToDate(startDate);
+        const eventEndTime = convertTimeToDate(endDate);
+        const now = new Date();
+
+        if (now >= eventStartTime) {
+            console.log(`✅ Evento deveria ter iniciado! Disparando atualização forçada...`);
+            eventSocket.send(JSON.stringify({ action: "refresh" }));
+        } else {
+            console.log(`⏳ Evento ainda não começou. Atualizando a cada 5 segundos até ${eventStartTime.toLocaleTimeString()}...`);
+            const interval = setInterval(() => {
+                const currentTime = new Date();
+
+                if (currentTime >= eventStartTime) {
+                    console.log("🚀 Evento começou! Disparando atualização final...");
+                    eventSocket.send(JSON.stringify({ action: "refresh" }));
+                    clearInterval(interval);
+                } else {
+                    console.log("🔄 Forçando atualização do status...");
+                    eventSocket.send(JSON.stringify({ action: "refresh" }));
+                }
+            }, 5000);
+        }
+
+        startEndTimeCheck(endDate);
     }
 
     function startEndTimeCheck(endDate) {

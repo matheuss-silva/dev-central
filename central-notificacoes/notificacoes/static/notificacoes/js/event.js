@@ -12,9 +12,12 @@ document.addEventListener("DOMContentLoaded", () => {
         console.log("🔄 Atualização do evento recebida:", data);
         updateEvent(data);
 
-        // 🚀 Apenas iniciar o loop de atualização se o evento ainda não começou
-        if (data.start_date && data.status !== "Ativo" && data.status !== "active") {
-            startUpdateLoop(data.start_date);
+        // 🚀 Iniciar monitoramento automático
+        if (data.status === "Ativo") {
+            startEndTimeCheck(data.end_date);
+        } else if (data.status === "Encerrado (dia)" || data.status === "Finalizado") {
+            console.log("🔔 Status atualizado! Forçando atualização...");
+            eventSocket.send(JSON.stringify({ action: "refresh" }));
         }
     };
 
@@ -22,7 +25,7 @@ document.addEventListener("DOMContentLoaded", () => {
         console.log("⚠️ WebSocket de evento desconectado. Tentando reconectar...");
         setTimeout(() => {
             window.location.reload();
-        }, 10000);
+        }, 5000);
     };
 
     eventSocket.onerror = (error) => {
@@ -45,9 +48,9 @@ document.addEventListener("DOMContentLoaded", () => {
             if (eventLogoElement) {
                 if (data.logo_url) {
                     eventLogoElement.src = data.logo_url;
-                    eventLogoElement.style.display = "block";  
+                    eventLogoElement.style.display = "block";
                 } else {
-                    eventLogoElement.style.display = "none";  
+                    eventLogoElement.style.display = "none";
                 }
             }
 
@@ -70,43 +73,38 @@ document.addEventListener("DOMContentLoaded", () => {
     function convertTimeToDate(timeString) {
         const [hours, minutes] = timeString.split(":").map(Number);
         const now = new Date();
-        now.setHours(hours, minutes, 0, 0); 
+        now.setHours(hours, minutes, 0, 0);
         return now;
     }
 
-    function startUpdateLoop(startDate) {
-        const eventStartTime = convertTimeToDate(startDate);
+    function startEndTimeCheck(endDate) {
+        const eventEndTime = convertTimeToDate(endDate);
         const now = new Date();
-    
-        if (now >= eventStartTime) {
-            console.log(`✅ Evento deveria ter iniciado! Disparando atualização forçada...`);
+
+        if (now >= eventEndTime) {
+            console.log("🚀 Evento terminou! Disparando atualização para Encerrado/Finalizado...");
             eventSocket.send(JSON.stringify({ action: "refresh" }));
             return;
         }
-    
-        console.log(`⏳ Evento ainda não começou. Atualizando a cada 5 segundos até ${eventStartTime.toLocaleTimeString()}...`);
-    
-        const interval = setInterval(() => {
+
+        console.log(`⏳ Monitorando término do evento. Atualizando às ${eventEndTime.toLocaleTimeString()}...`);
+
+        const checkEndInterval = setInterval(() => {
             const currentTime = new Date();
-    
-            if (currentTime >= eventStartTime) {
-                console.log("🚀 Evento começou! Disparando atualização final...");
+            if (currentTime >= eventEndTime) {
+                console.log("🚀 Evento finalizou! Disparando atualização...");
                 eventSocket.send(JSON.stringify({ action: "refresh" }));
-                clearInterval(interval);
-            } else {
-                console.log("🔄 Forçando atualização do status...");
-                eventSocket.send(JSON.stringify({ action: "refresh" }));
+                clearInterval(checkEndInterval);
             }
         }, 5000);
-    
-        // Adiciona um check para mudar o status no início do próximo dia
-        setInterval(() => {
-            const currentTime = new Date();
-            if (currentTime.getHours() === 0 && currentTime.getMinutes() === 0) {
-                console.log("🌅 Novo dia detectado, verificando atualização do evento...");
-                eventSocket.send(JSON.stringify({ action: "refresh" }));
-            }
-        }, 60000); // Checa a cada 1 minuto
     }
-    
+
+    // Atualiza status automaticamente à meia-noite
+    setInterval(() => {
+        const currentTime = new Date();
+        if (currentTime.getHours() === 0 && currentTime.getMinutes() === 0) {
+            console.log("🌅 Novo dia detectado, verificando atualização do evento...");
+            eventSocket.send(JSON.stringify({ action: "refresh" }));
+        }
+    }, 60000);
 });

@@ -1,12 +1,13 @@
 import json
 import logging
+import asyncio
+import redis
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from .models import Notification, Event, EventSchedule
 from asgiref.sync import async_to_sync
 from django.utils.timezone import now
-import asyncio
-import redis
+
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,7 @@ class EventConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         """Conecta o WebSocket ao grupo de status de eventos"""
         self.room_group_name = 'event_status'
-
+        
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
 
@@ -53,24 +54,8 @@ class EventConsumer(AsyncWebsocketConsumer):
         await self.send_current_event()
 
     async def disconnect(self, close_code):
-        """Remove o WebSocket do grupo de eventos"""
+        """Remove o WebSocket do grupo de eventos corretamente"""
         await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
-
-        # 🔴 **Força o fechamento da conexão Redis ao encerrar o WebSocket**
-        try:
-            loop = asyncio.get_running_loop()
-            if loop.is_running():
-                await loop.run_in_executor(None, self.close_redis_connection)
-        except RuntimeError:
-            pass  # Se o loop já estiver fechado, apenas ignore.
-
-    def close_redis_connection(self):
-        """Fecha corretamente a conexão com o Redis para evitar erros"""
-        try:
-            redis_client = redis.Redis()
-            redis_client.close()
-        except Exception as e:
-            logger.error(f"Erro ao fechar a conexão do Redis: {e}")
 
     async def send_current_event(self):
         """Envia os detalhes do evento ativo para os clientes WebSocket"""
@@ -79,28 +64,21 @@ class EventConsumer(AsyncWebsocketConsumer):
         if event:
             await self.send_event_status(event)
         else:
-            await self.send(text_data=json.dumps({
-                'error': 'Nenhum evento disponível no momento.'
-            }))
+            await self.send(text_data=json.dumps({'error': 'Nenhum evento disponível no momento.'}))
 
     async def send_event_status(self, event):
         """Envia a atualização do evento para o WebSocket"""
-
         if isinstance(event, dict):
             event = await self.get_event_by_id(event.get("id"))
 
         if event is None:
-            await self.send(text_data=json.dumps({
-                'error': 'Nenhum evento válido encontrado para exibir.'
-            }))
+            await self.send(text_data=json.dumps({'error': 'Nenhum evento válido encontrado para exibir.'}))
             return
 
         schedule = await self.get_today_schedule(event.id)
-
         start_date = schedule["start_date"] if schedule else "Não disponível"
         end_date = schedule["end_date"] if schedule else "Não disponível"
 
-        # Mapeamento para garantir que o status seja enviado em português
         status_mapping = {
             'waiting': 'Aguardando Início',
             'active': 'Ativo',
@@ -108,15 +86,18 @@ class EventConsumer(AsyncWebsocketConsumer):
             'finished': 'Finalizado'
         }
 
-        await self.send(text_data=json.dumps({
+        event_data = {
             'id': event.id,
             'name': event.name,
             'description': event.description,
             'start_date': start_date,
             'end_date': end_date,
-            'status': status_mapping.get(event.status, event.status),  # Envia status em português
-            'logo_url': event.logo.url if event.logo else None,  
-        }))
+            'status': status_mapping.get(event.status, event.status),
+            'logo_url': event.logo.url if event.logo else None,
+        }
+
+        logger.info(f"📡 Enviando atualização de evento via WebSocket: {event_data}")
+        await self.send(text_data=json.dumps(event_data))
 
     async def receive(self, text_data):
         """Recebe comandos WebSocket, como 'refresh' para atualizar o evento"""
@@ -130,18 +111,15 @@ class EventConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def get_active_event(self):
-        """
-        Busca o evento ativo ou aguardando início e atualiza seu status antes de enviá-lo.
-        Se o evento estiver como "Ativo", não altera automaticamente.
-        """
+        """Busca o evento ativo e atualiza seu status antes de enviá-lo."""
         event = Event.objects.exclude(status='finished').first()
-        if event and event.status != 'active':  # Evita sobrescrever status manual
+        if event:
             event.auto_update_status()
         return event
 
     @database_sync_to_async
     def get_event_by_id(self, event_id):
-        """Busca um evento específico pelo ID e evita erro de NoneType"""
+        """Busca um evento específico pelo ID"""
         return Event.objects.filter(id=event_id).first()
 
     @database_sync_to_async
@@ -157,7 +135,6 @@ class EventConsumer(AsyncWebsocketConsumer):
                     "end_date": schedule.end_time.strftime('%H:%M')
                 }
         return None
-
 
 
 class PostConsumer(AsyncWebsocketConsumer):

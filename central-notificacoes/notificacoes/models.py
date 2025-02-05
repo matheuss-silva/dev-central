@@ -106,7 +106,7 @@ class Event(models.Model):
         if self.status != new_status:
             self.status = new_status
             self.save(update_fields=['status'])
-            self.notify_status_change()
+            self.notify_status_change()  # ✅ Agora, o WebSocket será notificado
 
     def notify_status_change(self):
         """ Envia notificações via WebSocket sobre mudanças no status do evento. """
@@ -121,17 +121,22 @@ class Event(models.Model):
         }
 
         channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            'event_status',
-            {
-                'type': 'send_event_status',
-                'id': self.id,
-                'name': self.name,
-                'description': self.description,
-                'status': status_mapping.get(self.status, self.status),
-                'logo_url': self.logo.url if self.logo else None,
-            }
-        )
+
+        try:
+            async_to_sync(channel_layer.group_send)(
+                'event_status',
+                {
+                    'type': 'send_event_status',
+                    'id': self.id,
+                    'name': self.name,
+                    'description': self.description,
+                    'status': status_mapping.get(self.status, self.status),
+                    'logo_url': self.logo.url if self.logo else None,
+                }
+            )
+            print(f"✅ Evento atualizado e notificado: {self.name} - {status_mapping.get(self.status, self.status)}")
+        except Exception as e:
+            print(f"⚠️ Erro ao enviar atualização WebSocket: {e}")
 
 
 # 🕐 **Agendador de atualização automática do status do evento**
@@ -144,7 +149,9 @@ def schedule_event_status_updates():
                 event.auto_update_status()
         except Exception as e:
             print(f"⚠️ Erro ao atualizar status do evento: {e}")
-            break  # Para o loop caso o Django esteja fechando
+            time.sleep(10)  # Espera 10 segundos antes de tentar novamente
 
-# Inicia a verificação automática em segundo plano
-threading.Thread(target=schedule_event_status_updates, daemon=True).start()
+# **Inicia o agendador apenas se ainda não estiver rodando**
+if "event_scheduler" not in globals():
+    event_scheduler = threading.Thread(target=schedule_event_status_updates, daemon=True)
+    event_scheduler.start()
