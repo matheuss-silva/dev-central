@@ -5,6 +5,8 @@ from channels.db import database_sync_to_async
 from .models import Notification, Event, EventSchedule
 from asgiref.sync import async_to_sync
 from django.utils.timezone import now
+import asyncio
+import redis
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +55,22 @@ class EventConsumer(AsyncWebsocketConsumer):
     async def disconnect(self, close_code):
         """Remove o WebSocket do grupo de eventos"""
         await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
+
+        # 🔴 **Força o fechamento da conexão Redis ao encerrar o WebSocket**
+        try:
+            loop = asyncio.get_running_loop()
+            if loop.is_running():
+                await loop.run_in_executor(None, self.close_redis_connection)
+        except RuntimeError:
+            pass  # Se o loop já estiver fechado, apenas ignore.
+
+    def close_redis_connection(self):
+        """Fecha corretamente a conexão com o Redis para evitar erros"""
+        try:
+            redis_client = redis.Redis()
+            redis_client.close()
+        except Exception as e:
+            logger.error(f"Erro ao fechar a conexão do Redis: {e}")
 
     async def send_current_event(self):
         """Envia os detalhes do evento ativo para os clientes WebSocket"""

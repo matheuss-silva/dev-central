@@ -1,6 +1,8 @@
 from django.db import models
 from django.utils.timezone import now
 from django.contrib.auth import get_user_model
+import threading
+import time
 
 User = get_user_model()
 
@@ -83,15 +85,12 @@ class Event(models.Model):
 
     def auto_update_status(self):
         """ Atualiza automaticamente o status do evento baseado no horário programado. """
-        if self.status == 'active':  # Evita alterar status manualmente definido como 'Ativo'
-            return
-
         current_datetime = now()
         today_schedule = self.schedules.filter(date=current_datetime.date()).first()
         future_schedules = self.schedules.filter(date__gt=current_datetime.date()).exists()
 
-        # Inicializa new_status com o status atual
-        new_status = self.status  
+        # Inicializa o status com o valor atual
+        new_status = self.status
 
         if today_schedule:
             start_time = today_schedule.start_time
@@ -100,13 +99,10 @@ class Event(models.Model):
             if start_time <= current_datetime.time() < end_time:
                 new_status = 'active'
             elif current_datetime.time() >= end_time:
-                # Se há mais dias configurados, muda para "Encerrado (dia)", senão "Finalizado"
                 new_status = 'closed' if future_schedules else 'finished'
         else:
-            # Se não há mais datas futuras, marca como finalizado
             new_status = 'finished' if not future_schedules else 'waiting'
 
-        # Apenas atualiza se houver mudança de status
         if self.status != new_status:
             self.status = new_status
             self.save(update_fields=['status'])
@@ -136,3 +132,19 @@ class Event(models.Model):
                 'logo_url': self.logo.url if self.logo else None,
             }
         )
+
+
+# 🕐 **Agendador de atualização automática do status do evento**
+def schedule_event_status_updates():
+    while True:
+        try:
+            time.sleep(60)  # Aguarda 60 segundos
+            events = Event.objects.all()
+            for event in events:
+                event.auto_update_status()
+        except Exception as e:
+            print(f"⚠️ Erro ao atualizar status do evento: {e}")
+            break  # Para o loop caso o Django esteja fechando
+
+# Inicia a verificação automática em segundo plano
+threading.Thread(target=schedule_event_status_updates, daemon=True).start()
