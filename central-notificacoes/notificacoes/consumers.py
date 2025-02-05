@@ -46,7 +46,8 @@ class EventConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         """Conecta o WebSocket ao grupo de status de eventos"""
         self.room_group_name = 'event_status'
-        
+        self.last_sent_status = None  # Cache local do último status enviado
+
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
 
@@ -86,13 +87,21 @@ class EventConsumer(AsyncWebsocketConsumer):
             'finished': 'Finalizado'
         }
 
+        status_pt = status_mapping.get(event.status, event.status)
+
+        # ✅ Evita o envio repetido para o mesmo status
+        if self.last_sent_status == status_pt:
+            return
+
+        self.last_sent_status = status_pt  # Atualiza o cache local do status
+
         event_data = {
             'id': event.id,
             'name': event.name,
             'description': event.description,
             'start_date': start_date,
             'end_date': end_date,
-            'status': status_mapping.get(event.status, event.status),
+            'status': status_pt,
             'logo_url': event.logo.url if event.logo else None,
         }
 
@@ -135,7 +144,6 @@ class EventConsumer(AsyncWebsocketConsumer):
                     "end_date": schedule.end_time.strftime('%H:%M')
                 }
         return None
-
 
 class PostConsumer(AsyncWebsocketConsumer):
     async def connect(self):
