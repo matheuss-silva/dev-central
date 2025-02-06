@@ -35,6 +35,10 @@
         <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 10px;">
             <h3>{{ post.title }}</h3>
             <p>{{ post.subtitle }}</p>
+            
+            <!-- ✅ Exibição do horário do post -->
+            <p><strong>Publicado em:</strong> {{ post.created_at|date:"d/m/Y H:i" }}</p>
+            
             {% if post.image %}
                 <img src="{{ post.image.url }}" alt="Imagem do post" style="width: 100px;">
             {% endif %}

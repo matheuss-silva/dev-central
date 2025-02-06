@@ -167,7 +167,14 @@ class PostConsumer(AsyncWebsocketConsumer):
     async def post_message(self, event):
         """Envia uma nova postagem para os clientes WebSocket"""
         post = event['post']
-
+    
+        logger.info(f"📥 Dados recebidos pelo WebSocket: {post}")
+    
+        # Se não houver horário, adicione um horário correto
+        if 'created_at' not in post or not post['created_at']:
+            from django.utils.timezone import localtime
+            post['created_at'] = localtime(now()).strftime('%d/%m/%Y %H:%M')
+    
         await self.send(text_data=json.dumps({
             'action': 'add',
             'post': post

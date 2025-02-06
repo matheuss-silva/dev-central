@@ -1,5 +1,6 @@
 import json
 import logging
+from django.utils.timezone import localtime
 from django.contrib.auth import authenticate, login, logout, get_user_model
 from django.http import JsonResponse, HttpResponseRedirect
 from django.shortcuts import render, redirect, get_object_or_404
@@ -207,15 +208,16 @@ def send_post_to_users(post):
     """
     channel_layer = get_channel_layer()
     async_to_sync(channel_layer.group_send)(
-        'posts_group',  # Nome do grupo do WebSocket
+        'posts_group',
         {
-            'type': 'post_message',  # Tipo de evento que será capturado pelo WebSocket
+            'type': 'post_message',
             'post': {
                 'id': post.id,
                 'title': post.title,
                 'subtitle': post.subtitle,
                 'image_url': post.image.url if post.image else '',
                 'author': post.author.username,
+                'created_at': localtime(post.created_at).strftime('%d/%m/%Y %H:%M'), 
             }
         }
     )

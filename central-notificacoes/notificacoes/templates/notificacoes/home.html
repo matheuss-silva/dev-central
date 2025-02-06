@@ -52,6 +52,7 @@
                 <h2>{{ post.title }}</h2>
                 <h4>{{ post.subtitle }}</h4>
                 <p><strong>Autor:</strong> {{ post.author.username }}</p>
+                <p><strong>Publicado em:</strong> {{ post.created_at|date:"d/m/Y H:i" }}</p> <!-- ✅ Mostra o horário corretamente -->
                 {% if post.image %}
                     <img src="{{ post.image.url }}" alt="Imagem do post" class="post-image" style="width: 100px;">
                 {% endif %}
@@ -61,6 +62,7 @@
             <p>Sem postagens no momento.</p>
         {% endif %}
     </div>
+    
 
     <!-- Scripts -->
     <script src="{% static 'notificacoes/js/push_notifications.js' %}"></script>

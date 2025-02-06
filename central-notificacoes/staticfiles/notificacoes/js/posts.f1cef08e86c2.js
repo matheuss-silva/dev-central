@@ -44,11 +44,11 @@ document.addEventListener('DOMContentLoaded', function() {
         postElement.className = 'post';
         postElement.setAttribute('data-post-id', post.id);
         postElement.style.cssText = 'margin-bottom: 20px; border: 1px solid #ccc; padding: 10px; border-radius: 5px;';
-        
-        // ✅ Garante que o horário seja exibido corretamente
+    
+        // ✅ Garante que o horário seja sempre exibido corretamente
         const formattedDate = post.created_at && post.created_at !== "Horário não disponível"
             ? post.created_at
-            : new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            : "Data indisponível";
     
         postElement.innerHTML = `
             <h2>${post.title}</h2>
