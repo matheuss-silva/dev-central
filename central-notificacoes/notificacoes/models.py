@@ -71,6 +71,7 @@ class Event(models.Model):
     description = models.TextField()
     logo = models.ImageField(upload_to='events/logos/', null=True, blank=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='waiting')
+    manual_override = models.BooleanField(default=False)  # ✅ Adicionado para controle manual do status
 
     def save(self, *args, **kwargs):
         """ Garante que eventos novos comecem como 'Aguardando Início' e não sobrescreve status manual. """
@@ -81,12 +82,15 @@ class Event(models.Model):
 
         super().save(*args, **kwargs)  # Salva o evento no banco de dados
 
-        # Atualiza automaticamente o status apenas para eventos já existentes
-        if not is_new:
+        # Atualiza automaticamente o status apenas se o controle manual estiver desativado
+        if not is_new and not self.manual_override:
             self.auto_update_status()
 
     def auto_update_status(self):
         """ Atualiza automaticamente o status do evento baseado no horário programado. """
+        if self.manual_override:
+            return  # ✅ Não atualiza automaticamente se o modo manual estiver ativo
+        
         current_datetime = now()
         today_schedule = self.schedules.filter(date=current_datetime.date()).first()
         future_schedules = self.schedules.filter(date__gt=current_datetime.date()).exists()

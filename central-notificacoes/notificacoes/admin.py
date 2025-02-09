@@ -79,10 +79,12 @@ class EventAdmin(admin.ModelAdmin):
         """
         Garante que eventos novos sejam criados corretamente e impede sobrescrita do status ao editar no Admin.
         """
+        if 'status' in form.changed_data:
+            obj.manual_override = True  # ✅ Ativa o controle manual ao alterar o status manualmente
+
         if not change:  # Se for um novo evento
             obj.status = 'waiting'
 
-        # Ao editar um evento, NÃO forçar auto_update_status()
         super().save_model(request, obj, form, change)
 
         # Apenas notifica mudanças no status, sem sobrescrever manualmente
