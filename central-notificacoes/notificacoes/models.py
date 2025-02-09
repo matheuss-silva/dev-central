@@ -39,9 +39,11 @@ class Post(models.Model):
     image = models.ImageField(upload_to='posts/', null=True, blank=True)
     author = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
+    event = models.ForeignKey('Event', on_delete=models.CASCADE, null=True, blank=True)  # ✅ Correção!
 
     def __str__(self):
         return self.title
+
 
 
 class EventSchedule(models.Model):

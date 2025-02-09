@@ -23,7 +23,7 @@
         <input type="text" id="username" name="username" value="{{ user.username }}" required><br><br>
 
         <label for="full_name">Nome Completo:</label><br>
-        <input type="text" id="full_name" name="full_name" value="{{ user.first_name }}" required><br><br>
+        <input type="text" id="full_name" name="full_name" value="{{ user.get_full_name }}" required><br><br>
 
         <label for="password">Nova Senha (opcional):</label><br>
         <input type="password" id="password" name="password"><br><br>
@@ -31,6 +31,11 @@
         <button type="submit">Salvar Alterações</button>
     </form>
 
-    <a href="{% url 'home' %}" style="margin-top: 20px; display: inline-block;">Voltar para Home</a>
+    <a href="{% url 'home' %}" 
+   style="display: block; margin-top: 20px; text-decoration: none; background-color: #007bff; color: white; padding: 10px; border-radius: 5px; text-align: center;">
+    Voltar para Home
+    </a>
+
 </body>
+
 </html>

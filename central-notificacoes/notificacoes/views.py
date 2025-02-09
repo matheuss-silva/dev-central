@@ -91,6 +91,15 @@ def home(request):
         'event': event,  # Passa o evento para o template
     })
 
+@login_required
+def logout_view(request):
+    """
+    Realiza o logout do usuário e redireciona para a página de login.
+    """
+    logout(request)
+    return redirect('login')  # Redireciona para a página de login após o logout
+
+
 
 @login_required
 def profile_view(request):
@@ -226,7 +235,13 @@ def send_post_to_users(post):
 def user_dashboard(request):
     """
     Exibe os posts do usuário autenticado e permite criar novos posts.
+    Bloqueia acesso caso não haja evento ativo.
     """
+    # Verifica se há um evento ativo
+    event = Event.objects.filter(status='active').first()
+    if not event:
+        return render(request, 'notificacoes/dashboard.html', {'error': 'Nenhum evento ativo no momento.'})
+
     error = None
 
     if request.method == 'POST':
@@ -234,38 +249,32 @@ def user_dashboard(request):
         subtitle = request.POST.get('subtitle')
         image = request.FILES.get('image')
 
+        # ❌ Bloquear criação de posts se o evento não estiver ativo
+        if event.status != 'active':
+            return render(request, 'notificacoes/dashboard.html', {'error': 'Não é possível criar posts. O evento não está ativo.'})
+
         if title and subtitle:
             try:
-                # Criação do post
+                # Criar o post vinculado ao evento ativo
                 post = Post.objects.create(
                     title=title,
                     subtitle=subtitle,
                     image=image,
-                    author=request.user
+                    author=request.user,
+                    event=event  # ✅ Vincula o post ao evento ativo
                 )
 
                 # Enviar o post via WebSocket
-                channel_layer = get_channel_layer()
-                async_to_sync(channel_layer.group_send)(
-                    'posts_group',
-                    {
-                        'type': 'post_message',
-                        'post': {
-                            'title': post.title,
-                            'subtitle': post.subtitle,
-                            'image_url': post.image.url if post.image else '',
-                            'author': post.author.username,
-                        }
-                    }
-                )
+                send_post_to_users(post)
 
             except Exception as e:
                 error = f"Ocorreu um erro ao criar o post: {e}"
         else:
             error = "Por favor, preencha todos os campos obrigatórios."
 
-    posts = Post.objects.filter(author=request.user).order_by('-created_at')
+    posts = Post.objects.filter(author=request.user, event=event).order_by('-created_at')  # ✅ Filtrar apenas posts do evento ativo
     return render(request, 'notificacoes/dashboard.html', {'posts': posts, 'error': error})
+
 
 
 
@@ -273,8 +282,15 @@ def user_dashboard(request):
 def delete_post(request, post_id):
     """
     Exclui um post pertencente ao usuário autenticado.
+    Não permite exclusão após o encerramento do evento do dia.
     """
     post = get_object_or_404(Post, id=post_id, author=request.user)
+    event = post.event
+
+    # ❌ Impedir exclusão se o evento já foi encerrado no dia
+    if event.status in ['closed', 'finished']:
+        return JsonResponse({'error': 'Os posts não podem ser excluídos após o encerramento do evento do dia.'}, status=403)
+
     post.delete()
 
     # Enviar uma mensagem de exclusão via WebSocket (se necessário)

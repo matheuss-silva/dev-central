@@ -14,6 +14,16 @@
         <p style="color: red;">{{ error }}</p>
     {% endif %}
 
+    <a href="{% url 'home' %}" 
+    style="display: block; margin-bottom: 20px; text-decoration: none; background-color: #28a745; color: white; padding: 10px; border-radius: 5px; text-align: center;">
+     Voltar para Home
+    </a>
+    <script>
+        window.addEventListener("popstate", function () {
+            window.location.href = "{% url 'home' %}";
+        });
+    </script>
+
     <!-- Formulário para criar um novo post -->
     <form method="POST" enctype="multipart/form-data" style="margin-bottom: 20px;">
         {% csrf_token %}

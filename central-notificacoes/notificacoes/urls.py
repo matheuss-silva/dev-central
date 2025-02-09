@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import send_notification, list_notifications, user_dashboard, delete_post, profile_view
+from .views import send_notification, list_notifications, user_dashboard, delete_post, profile_view, logout_view
 
 urlpatterns = [
     path('send_notification/', send_notification, name='send_notification'),
@@ -7,5 +7,6 @@ urlpatterns = [
     path('dashboard/', user_dashboard, name='user_dashboard'),
     path('delete_post/<int:post_id>/', delete_post, name='delete_post'),
     path('profile/', profile_view, name='profile'),
+    path('logout/', logout_view, name='logout'),
 ]
 
