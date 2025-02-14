@@ -8,11 +8,11 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     eventSocket.onmessage = (event) => {
+        // Recebe a atualização do evento via WebSocket e atualiza a interface do usuário.
         const data = JSON.parse(event.data);
         console.log("🔄 Atualização do evento recebida:", data);
         updateEvent(data);
 
-        // 🚀 Iniciar monitoramento automático
         if (data.status === "Ativo") {
             startEndTimeCheck(data.end_date);
         } else if (data.status === "Encerrado (dia)" || data.status === "Finalizado") {
@@ -33,6 +33,7 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     function updateEvent(data) {
+        // Atualiza os elementos da página com as informações mais recentes do evento.
         const eventContainer = document.getElementById("event-container");
 
         if (eventContainer) {
@@ -78,6 +79,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function startEndTimeCheck(endDate) {
+        // Monitora automaticamente o término do evento e solicita uma atualização se necessário.
         const eventEndTime = convertTimeToDate(endDate);
         const now = new Date();
 

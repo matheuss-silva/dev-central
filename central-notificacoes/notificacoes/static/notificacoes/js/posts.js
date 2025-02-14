@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     socket.onmessage = function(event) {
+        // Recebe mensagens WebSocket para adicionar ou remover posts em tempo real.
         const data = JSON.parse(event.data);
         const action = data['action'];
 
@@ -40,12 +41,12 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     function addPost(post) {
+        // Cria um novo post e adiciona dinamicamente à interface do usuário.
         const postElement = document.createElement('div');
         postElement.className = 'post';
         postElement.setAttribute('data-post-id', post.id);
         postElement.style.cssText = 'margin-bottom: 20px; border: 1px solid #ccc; padding: 10px; border-radius: 5px;';
         
-        // ✅ Garante que o horário seja exibido corretamente
         const formattedDate = post.created_at && post.created_at !== "Horário não disponível"
             ? post.created_at
             : new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -64,6 +65,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
 
     function removePost(postId) {
+        // Remove um post da interface quando ele é excluído pelo autor.
         const postElement = document.querySelector(`[data-post-id="${postId}"]`);
         if (postElement) {
             postElement.remove();

@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     socket.onmessage = function(event) {
+        // Recebe notificações em tempo real e exibe na interface.
         const data = JSON.parse(event.data);
         const message = data['message'];
         console.log('Mensagem recebida via WebSocket:', message);
@@ -26,6 +27,7 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     function addNotification(message) {
+        // Adiciona visualmente uma notificação na interface do usuário.
         const notificationElement = document.createElement('div');
         notificationElement.className = 'notification';
         notificationElement.textContent = message;

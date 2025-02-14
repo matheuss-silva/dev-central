@@ -17,9 +17,7 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 def login_view(request):
-    """
-    Exibe a tela de login e autentica o usuário.
-    """
+    """Autentica um usuário e redireciona para a página inicial se as credenciais forem válidas."""
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
@@ -28,7 +26,7 @@ def login_view(request):
         if user is not None:
             login(request, user)
             logger.info(f'User {user.username} logged in successfully.')
-            return redirect('/home/')  # Redireciona para a página home
+            return redirect('/home/')
         else:
             logger.error('Failed login attempt.')
             return render(request, 'notificacoes/login.html', {'error': 'Usuário ou senha inválidos.'})
@@ -37,34 +35,28 @@ def login_view(request):
 
 
 def register_user(request):
-    """
-    Exibe a tela de registro e cria um novo usuário.
-    """
+    """Processa o registro de novos usuários e impede duplicações de username."""
     if request.method == 'POST':
         username = request.POST.get('username')
         full_name = request.POST.get('full_name')
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password')
 
-        # Verifica se as senhas coincidem
         if password != confirm_password:
             return render(request, 'notificacoes/register.html', {'error': 'As senhas não coincidem.'})
 
-        # Validação para campos obrigatórios
         if not username or not full_name:
             return render(request, 'notificacoes/register.html', {'error': 'Todos os campos são obrigatórios.'})
 
-        # Verifica se o nome de usuário já existe
         if User.objects.filter(username=username).exists():
             return render(request, 'notificacoes/register.html', {'error': 'O nome de usuário já está em uso.'})
 
         try:
-            # Cria um novo usuário
             user = User.objects.create_user(username=username, password=password)
             user.first_name = full_name
             user.save()
             logger.info(f'User {user.username} registered successfully.')
-            return redirect('/')  # Redireciona para a tela de login
+            return redirect('/')
         except Exception as e:
             logger.error(f'Error during user registration: {e}')
             return render(request, 'notificacoes/register.html', {'error': 'Erro ao criar a conta. Tente novamente.'})
@@ -75,20 +67,17 @@ def register_user(request):
 
 @login_required
 def home(request):
-    """
-    Exibe a tela inicial com informações do evento ativo e posts relacionados.
-    """
-    # Busca o evento ativo
+    """Renderiza a tela inicial com eventos e posts mais recentes."""
     event = Event.objects.filter(status='active').first()
     if event:
-        event.auto_update_status()  # Atualiza automaticamente o status do evento, se necessário
+        event.auto_update_status() 
 
     posts = Post.objects.all().order_by('-created_at')
 
     return render(request, 'notificacoes/home.html', {
         'user_id_json': json.dumps(request.user.id),
         'posts': posts,
-        'event': event,  # Passa o evento para o template
+        'event': event, 
     })
 
 @login_required
@@ -97,15 +86,13 @@ def logout_view(request):
     Realiza o logout do usuário e redireciona para a página de login.
     """
     logout(request)
-    return redirect('login')  # Redireciona para a página de login após o logout
+    return redirect('login')
 
 
 
 @login_required
 def profile_view(request):
-    """
-    Exibe a tela de gerenciamento de perfil do usuário.
-    """
+    """Permite que o usuário edite suas informações de perfil."""
     user = request.user
     error = None
     success = None
@@ -115,18 +102,15 @@ def profile_view(request):
         full_name = request.POST.get('full_name')
         password = request.POST.get('password')
 
-        # Verifica se o username já está em uso por outro usuário
         if username != user.username and User.objects.filter(username=username).exists():
             error = 'Este username já está em uso. Por favor, escolha outro.'
         else:
-            # Atualiza os dados do usuário
             user.username = username
             user.first_name = full_name
             if password:
                 user.set_password(password)
             user.save()
             success = 'Seu perfil foi atualizado com sucesso.'
-            # Reautenticar o usuário caso a senha seja alterada
             if password:
                 login(request, user)
 
@@ -140,6 +124,7 @@ def profile_view(request):
 @staff_member_required
 @csrf_exempt
 def send_notification(request):
+    """Cria e envia notificações para todos os usuários conectados via WebSocket."""
     if request.method == "POST":
         message = request.POST.get('message')
         title = request.POST.get('title', 'No Title')
@@ -148,15 +133,13 @@ def send_notification(request):
             return JsonResponse({'error': 'Dados inválidos'}, status=400)
 
         try:
-            # Cria a notificação
             notification = Notification.objects.create(
-                recipient=None,  # Nenhum destinatário específico
+                recipient=None,
                 title=title,
                 message=message,
                 read=False
             )
 
-            # Envia a notificação para todos os usuários conectados
             send_notification_to_group(notification.message)
             
             return JsonResponse({'success': 'Notificação enviada para todos os usuários conectados'}, status=200)
@@ -168,6 +151,7 @@ def send_notification(request):
 
 @csrf_exempt
 def mark_notification_as_read(request):
+    """Marca uma notificação como lida para o usuário autenticado."""
     if request.method == 'POST':
         notification_id = request.POST.get('notification_id')
         try:
@@ -185,6 +169,7 @@ def mark_notification_as_read(request):
 
 
 def list_notifications(request):
+    """Lista todas as notificações não lidas para o usuário autenticado."""
     if not request.user.is_authenticated:
         logger.warning('list_notifications: Usuário não autenticado tentou acessar.')
         return JsonResponse({'error': 'Usuário não autenticado'}, status=401)
@@ -195,16 +180,14 @@ def list_notifications(request):
 
 
 def send_notification_to_group(message):
-    """
-    Envia uma notificação para todos os usuários conectados ao grupo global de notificações.
-    """
+    """Envia uma notificação global para todos os usuários conectados."""
     try:
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(
-            'notifications_group',  # Nome do grupo global
+            'notifications_group',
             {
-                'type': 'notify',  # Tipo de mensagem
-                'message': message,  # Conteúdo da mensagem
+                'type': 'notify',
+                'message': message,
             }
         )
         logger.info(f'Notificação enviada para o grupo global de notificações.')
@@ -233,15 +216,10 @@ def send_post_to_users(post):
 
 @login_required
 def user_dashboard(request):
-    """
-    Exibe os posts do usuário autenticado e permite criar novos posts.
-    Bloqueia acesso caso não haja evento ativo.
-    """
-    # Verifica se há um evento ativo
+    """Exibe os posts do usuário autenticado e permite criar novos posts, apenas se houver um evento ativo."""
     event = Event.objects.filter(status='active').first()
     if not event:
         return render(request, 'notificacoes/dashboard.html', {'error': 'Nenhum evento ativo no momento.'})
-
     error = None
 
     if request.method == 'POST':
@@ -249,30 +227,25 @@ def user_dashboard(request):
         subtitle = request.POST.get('subtitle')
         image = request.FILES.get('image')
 
-        # ❌ Bloquear criação de posts se o evento não estiver ativo
         if event.status != 'active':
             return render(request, 'notificacoes/dashboard.html', {'error': 'Não é possível criar posts. O evento não está ativo.'})
 
         if title and subtitle:
             try:
-                # Criar o post vinculado ao evento ativo
                 post = Post.objects.create(
                     title=title,
                     subtitle=subtitle,
                     image=image,
                     author=request.user,
-                    event=event  # ✅ Vincula o post ao evento ativo
+                    event=event
                 )
-
-                # Enviar o post via WebSocket
                 send_post_to_users(post)
-
             except Exception as e:
                 error = f"Ocorreu um erro ao criar o post: {e}"
         else:
             error = "Por favor, preencha todos os campos obrigatórios."
 
-    posts = Post.objects.filter(author=request.user, event=event).order_by('-created_at')  # ✅ Filtrar apenas posts do evento ativo
+    posts = Post.objects.filter(author=request.user, event=event).order_by('-created_at') 
     return render(request, 'notificacoes/dashboard.html', {'posts': posts, 'error': error})
 
 
@@ -280,20 +253,15 @@ def user_dashboard(request):
 
 @login_required
 def delete_post(request, post_id):
-    """
-    Exclui um post pertencente ao usuário autenticado.
-    Não permite exclusão após o encerramento do evento do dia.
-    """
+    """Exclui um post se o evento ainda estiver ativo. Caso contrário, bloqueia a exclusão."""
     post = get_object_or_404(Post, id=post_id, author=request.user)
     event = post.event
 
-    # ❌ Impedir exclusão se o evento já foi encerrado no dia
     if event.status in ['closed', 'finished']:
         return JsonResponse({'error': 'Os posts não podem ser excluídos após o encerramento do evento do dia.'}, status=403)
 
     post.delete()
 
-    # Enviar uma mensagem de exclusão via WebSocket (se necessário)
     channel_layer = get_channel_layer()
     async_to_sync(channel_layer.group_send)(
         'posts_group',

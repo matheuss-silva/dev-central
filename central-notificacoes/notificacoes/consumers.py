@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 class NotificationConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        """Conecta o WebSocket ao grupo de notificações"""
+        """Conecta o WebSocket ao grupo de notificações para receber atualizações em tempo real."""
         self.room_group_name = 'notifications_group'
 
         await self.channel_layer.group_add(
@@ -24,20 +24,20 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         await self.accept()
 
     async def disconnect(self, close_code):
-        """Remove o WebSocket do grupo de notificações"""
+        """Remove o WebSocket do grupo de notificações quando desconectado."""
         await self.channel_layer.group_discard(
             self.room_group_name,
             self.channel_name
         )
 
     async def notify(self, event):
-        """Envia notificações para os usuários conectados"""
+        """Envia mensagens de notificação para usuários conectados via WebSocket."""
         message = event['message']
         await self.send(text_data=json.dumps({'message': message}))
 
     @database_sync_to_async
     def fetch_notifications(self):
-        """Busca notificações não lidas para o usuário autenticado"""
+        """Recupera todas as notificações não lidas do usuário autenticado."""
         notifications = Notification.objects.filter(recipient=self.scope["user"], read=False)
         return list(notifications.values())
 
@@ -46,12 +46,10 @@ class EventConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         """Conecta o WebSocket ao grupo de status de eventos"""
         self.room_group_name = 'event_status'
-        self.last_sent_status = None  # Cache local do último status enviado
+        self.last_sent_status = None 
 
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
-
-        # Enviar evento atual ao conectar
         await self.send_current_event()
 
     async def disconnect(self, close_code):
@@ -68,7 +66,7 @@ class EventConsumer(AsyncWebsocketConsumer):
             await self.send(text_data=json.dumps({'error': 'Nenhum evento disponível no momento.'}))
 
     async def send_event_status(self, event):
-        """Envia a atualização do evento para o WebSocket"""
+        """Envia o status atualizado do evento para os clientes conectados via WebSocket."""
         if isinstance(event, dict):
             event = await self.get_event_by_id(event.get("id"))
 
@@ -89,11 +87,10 @@ class EventConsumer(AsyncWebsocketConsumer):
 
         status_pt = status_mapping.get(event.status, event.status)
 
-        # ✅ Evita o envio repetido para o mesmo status
         if self.last_sent_status == status_pt:
             return
 
-        self.last_sent_status = status_pt  # Atualiza o cache local do status
+        self.last_sent_status = status_pt 
 
         event_data = {
             'id': event.id,
@@ -165,12 +162,11 @@ class PostConsumer(AsyncWebsocketConsumer):
         )
 
     async def post_message(self, event):
-        """Envia uma nova postagem para os clientes WebSocket"""
+        """Envia um novo post para os clientes conectados em tempo real."""
         post = event['post']
     
         logger.info(f"📥 Dados recebidos pelo WebSocket: {post}")
-    
-        # Se não houver horário, adicione um horário correto
+
         if 'created_at' not in post or not post['created_at']:
             from django.utils.timezone import localtime
             post['created_at'] = localtime(now()).strftime('%d/%m/%Y %H:%M')
@@ -181,7 +177,7 @@ class PostConsumer(AsyncWebsocketConsumer):
         }))
 
     async def delete_post_message(self, event):
-        """Envia um evento de exclusão para os clientes WebSocket"""
+        """Notifica os clientes conectados sobre a exclusão de um post."""
         post_id = event['post_id']
         logger.info(f"Mensagem de exclusão enviada para o WebSocket: Post ID {post_id}")
 
